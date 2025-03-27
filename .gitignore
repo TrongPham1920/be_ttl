@@ -1,0 +1,32 @@
+
+
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, test result logs
+*.test
+*.out
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.cov
+
+# Dependencies
+/vendor/
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Go workspace file (in case you are using Go Modules)
+go.work
+go.work.sum
+
+# Go module cache
+/go/pkg/mod
+
+.idea

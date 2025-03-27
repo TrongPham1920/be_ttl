@@ -1,0 +1,1399 @@
+openapi: 3.0.0
+info:
+  title: API Trothalo
+  description: API hệ thống đặt lưu trú
+  version: 1.0.0
+  contact:
+    name: Trothalo Team
+    email: support@trothalo.com
+
+servers:
+  - url: http://localhost:8080
+    description: Local server
+  - url: https://backend.trothalo.click
+    description: Production server
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        status:
+          type: string
+          example: error
+        code:
+          type: string
+          example: REQUIRED_FIELD
+        message:
+          type: string
+          example: Email không được để trống
+        data:
+          type: object
+          nullable: true
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        role:
+          type: string
+          enum: [admin, user, host]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Room:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+        address:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        host_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [available, rented, maintenance]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        check_in:
+          type: string
+          format: date-time
+        check_out:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [pending, confirmed, completed, cancelled]
+        total_price:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Bank:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        account_number:
+          type: string
+        account_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Withdrawal:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        bank_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Rate:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        comment:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Revenue:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        room_id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Benefit:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Discount:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        percentage:
+          type: number
+        valid_from:
+          type: string
+          format: date-time
+        valid_to:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Holiday:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        date:
+          type: string
+          format: date
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Invoice:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        amount:
+          type: number
+        status:
+          type: string
+          enum: [pending, paid, cancelled]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Accommodation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        address:
+          type: string
+        latitude:
+          type: number
+        longitude:
+          type: number
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+paths:
+  # Authentication endpoints
+  /api/v1/auth/register:
+    post:
+      summary: Đăng ký tài khoản mới
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+                - phone
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+                phone:
+                  type: string
+      responses:
+        "200":
+          description: Đăng ký thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/User"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/auth/login:
+    post:
+      summary: Đăng nhập
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  format: password
+      responses:
+        "200":
+          description: Đăng nhập thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      access_token:
+                        type: string
+                      refresh_token:
+                        type: string
+                      user:
+                        $ref: "#/components/schemas/User"
+        "401":
+          description: Email hoặc mật khẩu không đúng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Room endpoints
+  /api/v1/rooms:
+    get:
+      summary: Lấy danh sách phòng
+      tags:
+        - Rooms
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Số trang
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Số lượng phòng mỗi trang
+        - in: query
+          name: min_price
+          schema:
+            type: number
+          description: Giá tối thiểu
+        - in: query
+          name: max_price
+          schema:
+            type: number
+          description: Giá tối đa
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [available, rented, maintenance]
+          description: Trạng thái phòng
+      responses:
+        "200":
+          description: Lấy danh sách phòng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      rooms:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Room"
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+
+    post:
+      summary: Tạo phòng mới
+      tags:
+        - Rooms
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - description
+                - price
+                - address
+                - latitude
+                - longitude
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                address:
+                  type: string
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+      responses:
+        "200":
+          description: Tạo phòng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Room"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/rooms/{room_id}:
+    get:
+      summary: Lấy thông tin chi tiết phòng
+      tags:
+        - Rooms
+      parameters:
+        - in: path
+          name: room_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID của phòng
+      responses:
+        "200":
+          description: Lấy thông tin phòng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Room"
+        "404":
+          description: Không tìm thấy phòng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      summary: Cập nhật thông tin phòng
+      tags:
+        - Rooms
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: room_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID của phòng
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                description:
+                  type: string
+                price:
+                  type: number
+                address:
+                  type: string
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+                status:
+                  type: string
+                  enum: [available, rented, maintenance]
+      responses:
+        "200":
+          description: Cập nhật phòng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Room"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy phòng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Order endpoints
+  /api/v1/orders:
+    post:
+      summary: Tạo đơn đặt phòng mới
+      tags:
+        - Orders
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - room_id
+                - check_in
+                - check_out
+              properties:
+                room_id:
+                  type: string
+                  format: uuid
+                check_in:
+                  type: string
+                  format: date-time
+                check_out:
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: Tạo đơn đặt phòng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Order"
+        "400":
+          description: Dữ liệu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    get:
+      summary: Lấy danh sách đơn đặt phòng
+      tags:
+        - Orders
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: page
+          schema:
+            type: integer
+            default: 1
+          description: Số trang
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 10
+          description: Số lượng đơn mỗi trang
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, confirmed, completed, cancelled]
+          description: Trạng thái đơn
+      responses:
+        "200":
+          description: Lấy danh sách đơn đặt phòng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: object
+                    properties:
+                      orders:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Order"
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /api/v1/orders/{order_id}:
+    get:
+      summary: Lấy thông tin chi tiết đơn đặt phòng
+      tags:
+        - Orders
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: order_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID của đơn đặt phòng
+      responses:
+        "200":
+          description: Lấy thông tin đơn đặt phòng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Order"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy đơn đặt phòng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      summary: Cập nhật trạng thái đơn đặt phòng
+      tags:
+        - Orders
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: path
+          name: order_id
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID của đơn đặt phòng
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [pending, confirmed, completed, cancelled]
+      responses:
+        "200":
+          description: Cập nhật trạng thái đơn đặt phòng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Order"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy đơn đặt phòng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Bank endpoints
+  /api/v1/banks:
+    get:
+      summary: Lấy danh sách ngân hàng
+      tags:
+        - Banks
+      security:
+        - BearerAuth: []
+      responses:
+        "200":
+          description: Lấy danh sách ngân hàng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Bank"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Thêm ngân hàng mới
+      tags:
+        - Banks
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - account_number
+                - account_name
+              properties:
+                name:
+                  type: string
+                account_number:
+                  type: string
+                account_name:
+                  type: string
+      responses:
+        "200":
+          description: Thêm ngân hàng thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Bank"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Withdrawal endpoints
+  /api/v1/withdrawals:
+    get:
+      summary: Lấy danh sách yêu cầu rút tiền
+      tags:
+        - Withdrawals
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: status
+          schema:
+            type: string
+            enum: [pending, approved, rejected]
+          description: Trạng thái yêu cầu
+      responses:
+        "200":
+          description: Lấy danh sách yêu cầu rút tiền thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Withdrawal"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Tạo yêu cầu rút tiền mới
+      tags:
+        - Withdrawals
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+                - bank_id
+              properties:
+                amount:
+                  type: number
+                bank_id:
+                  type: string
+                  format: uuid
+      responses:
+        "200":
+          description: Tạo yêu cầu rút tiền thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Withdrawal"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Rate endpoints
+  /api/v1/rates:
+    get:
+      summary: Lấy danh sách đánh giá
+      tags:
+        - Rates
+      parameters:
+        - in: query
+          name: room_id
+          schema:
+            type: string
+            format: uuid
+          description: ID của phòng
+      responses:
+        "200":
+          description: Lấy danh sách đánh giá thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Rate"
+        "404":
+          description: Không tìm thấy phòng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    post:
+      summary: Tạo đánh giá mới
+      tags:
+        - Rates
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - room_id
+                - rating
+                - comment
+              properties:
+                room_id:
+                  type: string
+                  format: uuid
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                comment:
+                  type: string
+      responses:
+        "200":
+          description: Tạo đánh giá thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Rate"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy phòng
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Revenue endpoints
+  /api/v1/revenues:
+    get:
+      summary: Lấy danh sách doanh thu
+      tags:
+        - Revenues
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: start_date
+          schema:
+            type: string
+            format: date
+          description: Ngày bắt đầu
+        - in: query
+          name: end_date
+          schema:
+            type: string
+            format: date
+          description: Ngày kết thúc
+      responses:
+        "200":
+          description: Lấy danh sách doanh thu thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Revenue"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Benefit endpoints
+  /api/v1/benefits:
+    get:
+      summary: Lấy danh sách tiện ích
+      tags:
+        - Benefits
+      responses:
+        "200":
+          description: Lấy danh sách tiện ích thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Benefit"
+
+    post:
+      summary: Thêm tiện ích mới
+      tags:
+        - Benefits
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - description
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+      responses:
+        "200":
+          description: Thêm tiện ích thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Benefit"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Discount endpoints
+  /api/v1/discounts:
+    get:
+      summary: Lấy danh sách mã giảm giá
+      tags:
+        - Discounts
+      responses:
+        "200":
+          description: Lấy danh sách mã giảm giá thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Discount"
+
+    post:
+      summary: Thêm mã giảm giá mới
+      tags:
+        - Discounts
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+                - percentage
+                - valid_from
+                - valid_to
+              properties:
+                code:
+                  type: string
+                percentage:
+                  type: number
+                valid_from:
+                  type: string
+                  format: date-time
+                valid_to:
+                  type: string
+                  format: date-time
+      responses:
+        "200":
+          description: Thêm mã giảm giá thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Discount"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Holiday endpoints
+  /api/v1/holidays:
+    get:
+      summary: Lấy danh sách ngày nghỉ
+      tags:
+        - Holidays
+      responses:
+        "200":
+          description: Lấy danh sách ngày nghỉ thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Holiday"
+
+    post:
+      summary: Thêm ngày nghỉ mới
+      tags:
+        - Holidays
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - date
+              properties:
+                name:
+                  type: string
+                date:
+                  type: string
+                  format: date
+      responses:
+        "200":
+          description: Thêm ngày nghỉ thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Holiday"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Invoice endpoints
+  /api/v1/invoices:
+    get:
+      summary: Lấy danh sách hóa đơn
+      tags:
+        - Invoices
+      security:
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: order_id
+          schema:
+            type: string
+            format: uuid
+          description: ID của đơn đặt phòng
+      responses:
+        "200":
+          description: Lấy danh sách hóa đơn thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Invoice"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  # Accommodation endpoints
+  /api/v1/accommodations:
+    get:
+      summary: Lấy danh sách khu vực
+      tags:
+        - Accommodations
+      responses:
+        "200":
+          description: Lấy danh sách khu vực thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Accommodation"
+
+    post:
+      summary: Thêm khu vực mới
+      tags:
+        - Accommodations
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - description
+                - address
+                - latitude
+                - longitude
+              properties:
+                name:
+                  type: string
+                description:
+                  type: string
+                address:
+                  type: string
+                latitude:
+                  type: number
+                longitude:
+                  type: number
+      responses:
+        "200":
+          description: Thêm khu vực thành công
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: success
+                  data:
+                    $ref: "#/components/schemas/Accommodation"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
