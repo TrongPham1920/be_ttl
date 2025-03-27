@@ -15,6 +15,7 @@ import (
 	"new/services/logger"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func recreateUserTable() {
@@ -90,7 +91,10 @@ func recreateUserTable() {
 }
 
 func main() {
-	// Load environment variables
+
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: không load được file .env, sử dụng biến môi trường có sẵn: %v", err)
+	}
 
 	// Khởi tạo ứng dụng
 	router, m, c, err := config.InitApp()
