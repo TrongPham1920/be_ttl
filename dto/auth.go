@@ -19,7 +19,7 @@ type UserLoginResponse struct {
 	UserID       uint      `json:"id"`
 	UserName     string    `json:"name"`
 	UserEmail    string    `json:"email"`
-	UserVerified bool      `json:"verified"`
+	UserVerified bool      `json:"isVerified"`
 	UserPhone    string    `json:"phone"`
 	UserRole     int       `json:"role"`
 	CreatedAt    time.Time `json:"createdAt"`
