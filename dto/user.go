@@ -123,5 +123,5 @@ type UserResponseUpdate struct {
 	Amount           int64          `json:"amount,omitempty"`
 	AccommodationIDs []int64        `json:"accommodationIds,omitempty"`
 	AdminId          *uint          `json:"adminId,omitempty"`
-	Gender           int            `json:"gender,omitempty"`
+	Gender           int            `json:"gender"`
 }
