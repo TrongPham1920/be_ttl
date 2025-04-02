@@ -58,6 +58,7 @@ type AccommodationResponse struct {
 	Longitude        float64      `json:"longitude"`
 	Latitude         float64      `json:"latitude"`
 	Benefits         []BenefitAcc `json:"benefits"`
+	User             UserRevenue  `json:"user"`
 }
 
 type BenefitAcc struct {
