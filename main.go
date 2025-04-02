@@ -39,9 +39,10 @@ func main() {
 	}
 
 	configCors := cors.DefaultConfig()
-	configCors.AddAllowHeaders("Authorization")
+	configCors.AllowOrigins = []string{"*"}
+	configCors.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	configCors.AllowHeaders = []string{"Authorization", "Content-Type"}
 	configCors.AllowCredentials = true
-	configCors.AllowAllOrigins = true
 	router.Use(cors.New(configCors))
 	router.SetTrustedProxies(nil)
 
