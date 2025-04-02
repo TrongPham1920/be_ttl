@@ -1,448 +1,326 @@
-DESIGN PATTERNS ĐÃ ĐƯỢC ÁP DỤNG TRONG DỰ ÁN
+# Design Patterns được sử dụng trong dự án
 
-1. SINGLETON PATTERN
-- Vị trí: config/database.go
-- Công dụng: Đảm bảo chỉ có một instance của database connection trong toàn bộ ứng dụng
-- Cách triển khai:
-  + Sử dụng biến global DB
-  + Khởi tạo kết nối một lần duy nhất
-  + Tái sử dụng kết nối cho toàn bộ ứng dụng
-- Code ví dụ:
+## 1. Repository Pattern
+- Mục đích: Tách biệt logic truy cập dữ liệu khỏi business logic
+- Vị trí áp dụng:
+  + `services/accommodation_service.go`: Xử lý truy vấn dữ liệu chỗ ở
+  + `services/auth_service.go`: Xử lý truy vấn dữ liệu người dùng
+  + `services/order_service.go`: Xử lý truy vấn dữ liệu đơn hàng
+- Ví dụ code:
 ```go
-// config/database.go
-var DB *gorm.DB
+// Repository interface
+type AccommodationRepository interface {
+    GetAll() ([]models.Accommodation, error)
+    GetByID(id uint) (*models.Accommodation, error)
+    Create(acc *models.Accommodation) error
+}
 
-func ConnectDB() {
-    dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable",
-        os.Getenv("DB_HOST"),
-        os.Getenv("DB_USER"),
-        os.Getenv("DB_PASSWORD"),
-        os.Getenv("DB_NAME"),
-        os.Getenv("DB_PORT"),
-    )
-    
-    db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+// Repository implementation
+type accommodationRepository struct {
+    db *gorm.DB
+}
+
+func (r *accommodationRepository) GetAll() ([]models.Accommodation, error) {
+    var accommodations []models.Accommodation
+    err := r.db.Find(&accommodations).Error
+    return accommodations, err
+}
+```
+
+## 2. Service Pattern
+- Mục đích: Chứa business logic và xử lý các tác vụ phức tạp
+- Vị trí áp dụng:
+  + `services/accommodation_service.go`: Xử lý logic chỗ ở
+  + `services/auth_service.go`: Xử lý logic xác thực
+  + `services/order_service.go`: Xử lý logic đơn hàng
+- Ví dụ code:
+```go
+type AccommodationService struct {
+    repo AccommodationRepository
+}
+
+func (s *AccommodationService) GetAllAccommodationsForUser(userID uint) ([]models.Accommodation, error) {
+    // Business logic here
+    accommodations, err := s.repo.GetAll()
     if err != nil {
-        panic("Failed to connect to database!")
+        return nil, err
     }
-    
-    DB = db
+    // Filter and process data
+    return accommodations, nil
 }
 ```
-- Lợi ích:
-  + Tiết kiệm tài nguyên
-  + Đảm bảo tính nhất quán của dữ liệu
-  + Dễ dàng quản lý kết nối
 
-2. FACTORY METHOD PATTERN
-- Vị trí: controllers/user_controller.go, order_controller.go
-- Công dụng: Tạo đối tượng controller mới với các dependency được inject
-- Cách triển khai:
-  + Tạo hàm NewUserController, NewOrderController
-  + Inject các dependency (DB, Redis, Services)
-  + Trả về instance mới của controller
-- Code ví dụ:
+## 3. Factory Pattern
+- Mục đích: Tạo các instance của service với các dependencies được inject
+- Vị trí áp dụng:
+  + `services/accommodation_service.go`: NewAccommodationService
+  + `services/auth_service.go`: NewAuthService
+  + `services/order_service.go`: NewOrderService
+- Ví dụ code:
 ```go
-// controllers/user_controller.go
-func NewUserController(db *gorm.DB, redis *redis.Client) *UserController {
-    return &UserController{
-        db:    db,
-        redis: redis,
-    }
-}
-
-// controllers/order_controller.go
-func NewOrderController(db *gorm.DB, redis *redis.Client, bookingFacade *services.BookingFacade) *OrderController {
-    return &OrderController{
-        db:            db,
-        redis:         redis,
-        bookingFacade: bookingFacade,
-    }
+func NewAccommodationService(db *gorm.DB) *AccommodationService {
+    repo := &accommodationRepository{db: db}
+    return &AccommodationService{repo: repo}
 }
 ```
-- Lợi ích:
-  + Tách biệt logic tạo đối tượng
-  + Dễ dàng thay đổi implementation
-  + Giảm sự phụ thuộc giữa các thành phần
 
-3. ADAPTER PATTERN
-- Vị trí: Các hàm convert giữa Model và DTO
-- Công dụng: Chuyển đổi dữ liệu giữa các layer khác nhau
-- Cách triển khai:
-  + convertToOrderAccommodationResponse
-  + convertToOrderRoomResponse
-  + convertToUserResponse
-- Code ví dụ:
+## 4. Adapter Pattern
+- Mục đích: Chuyển đổi interface giữa các service khác nhau
+- Vị trí áp dụng:
+  + `services/auth_service.go`: UserServiceAdapter
+  + `controllers/order_controller.go`: Chuyển đổi giữa model và DTO
+- Ví dụ code:
 ```go
-// controllers/order_controller.go
-func convertToOrderAccommodationResponse(accommodation *models.Accommodation) dto.OrderAccommodationResponse {
-    return dto.OrderAccommodationResponse{
-        ID:          accommodation.ID,
-        Name:        accommodation.Name,
-        Description: accommodation.Description,
-        Address:     accommodation.Address,
-        // ... các trường khác
-    }
+type UserServiceAdapter struct {
+    userService *UserService
 }
 
-// controllers/user_controller.go
-func convertToUserResponse(user *models.User) dto.UserResponse {
-    return dto.UserResponse{
-        ID:        user.ID,
-        Username:  user.Username,
-        Email:     user.Email,
-        Role:      user.Role,
-        // ... các trường khác
+func (a *UserServiceAdapter) GetUserByID(id uint) (*UserDTO, error) {
+    user, err := a.userService.GetUserByID(id)
+    if err != nil {
+        return nil, err
     }
+    return &UserDTO{
+        ID: user.ID,
+        Name: user.Name,
+        Email: user.Email,
+    }, nil
 }
 ```
-- Lợi ích:
-  + Tách biệt cấu trúc dữ liệu giữa các layer
-  + Dễ dàng thay đổi format dữ liệu
-  + Tăng tính linh hoạt của hệ thống
 
-4. CACHE-ASIDE PATTERN
-- Vị trí: Xử lý cache với Redis
-- Công dụng: Tối ưu hiệu năng bằng cách lưu trữ dữ liệu tạm thời
-- Cách triển khai:
-  + Kiểm tra cache trước khi truy vấn DB
-  + Lưu kết quả vào cache sau khi truy vấn DB
-  + Xóa cache khi có thay đổi
-- Code ví dụ:
+## 5. Strategy Pattern
+- Mục đích: Định nghĩa các chiến lược xác thực khác nhau
+- Vị trí áp dụng:
+  + `services/auth_service.go`: Xác thực qua email, Google
+- Ví dụ code:
 ```go
-// controllers/user_controller.go
-func (uc *UserController) GetUsers(c *gin.Context) {
-    // Kiểm tra cache
-    cachedUsers, err := uc.redis.Get(c, "users").Result()
-    if err == nil {
-        var users []models.User
-        json.Unmarshal([]byte(cachedUsers), &users)
-        response.Success(c, users)
-        return
-    }
+type AuthStrategy interface {
+    Authenticate(credentials interface{}) (*User, error)
+}
 
-    // Truy vấn DB nếu không có trong cache
-    var users []models.User
-    if err := uc.db.Find(&users).Error; err != nil {
-        response.ServerError(c)
-        return
-    }
+type EmailAuthStrategy struct{}
+type GoogleAuthStrategy struct{}
 
-    // Lưu vào cache
-    usersJSON, _ := json.Marshal(users)
-    uc.redis.Set(c, "users", usersJSON, time.Hour)
-    response.Success(c, users)
+func (s *EmailAuthStrategy) Authenticate(credentials interface{}) (*User, error) {
+    // Implement email authentication
+}
+
+func (s *GoogleAuthStrategy) Authenticate(credentials interface{}) (*User, error) {
+    // Implement Google authentication
 }
 ```
-- Lợi ích:
-  + Giảm tải cho database
-  + Tăng tốc độ truy xuất dữ liệu
-  + Tối ưu hiệu năng hệ thống
 
-5. STRATEGY PATTERN
-- Vị trí: Xử lý response
-- Công dụng: Định nghĩa một họ các thuật toán, đóng gói từng thuật toán
-- Cách triển khai:
-  + Success(c, data)
-  + BadRequest(c, message)
-  + Unauthorized(c)
-  + Forbidden(c)
-  + NotFound(c)
-  + ServerError(c)
-- Code ví dụ:
+## 6. Singleton Pattern
+- Mục đích: Đảm bảo chỉ có một instance của database connection
+- Vị trí áp dụng:
+  + `config/database.go`: GetDB()
+- Ví dụ code:
 ```go
-// response/response.go
-func Success(c *gin.Context, data interface{}) {
-    c.JSON(http.StatusOK, gin.H{
-        "status":  "success",
-        "data":    data,
-        "message": "Operation successful",
+var dbInstance *gorm.DB
+var once sync.Once
+
+func GetDB() *gorm.DB {
+    once.Do(func() {
+        dbInstance = initDB()
+    })
+    return dbInstance
+}
+```
+
+## 7. Observer Pattern
+- Mục đích: Cập nhật tự động khi có thay đổi
+- Vị trí áp dụng:
+  + `services/accommodation_service.go`: Cập nhật rating
+- Ví dụ code:
+```go
+type RatingObserver interface {
+    OnRatingChanged(accommodationID uint, newRating float64)
+}
+
+type AccommodationService struct {
+    observers []RatingObserver
+}
+
+func (s *AccommodationService) UpdateRating(id uint, rating float64) error {
+    // Update rating logic
+    for _, observer := range s.observers {
+        observer.OnRatingChanged(id, rating)
+    }
+    return nil
+}
+```
+
+## 8. Template Method Pattern
+- Mục đích: Định nghĩa khung cho các quy trình
+- Vị trí áp dụng:
+  + `services/email_service.go`: Gửi email
+- Ví dụ code:
+```go
+type EmailTemplate interface {
+    GetSubject() string
+    GetBody() string
+}
+
+type VerificationEmail struct{}
+type OrderConfirmationEmail struct{}
+
+func SendEmail(template EmailTemplate) error {
+    subject := template.GetSubject()
+    body := template.GetBody()
+    // Send email logic
+    return nil
+}
+```
+
+## 9. Builder Pattern
+- Mục đích: Xây dựng query phức tạp theo từng bước
+- Vị trí áp dụng:
+  + `services/accommodation_service.go`: GetAllAccommodationsForUser
+- Ví dụ code:
+```go
+type QueryBuilder struct {
+    query *gorm.DB
+}
+
+func (b *QueryBuilder) WithPriceRange(min, max float64) *QueryBuilder {
+    b.query = b.query.Where("price BETWEEN ? AND ?", min, max)
+    return b
+}
+
+func (b *QueryBuilder) WithLocation(lat, lng float64) *QueryBuilder {
+    b.query = b.query.Where("ST_Distance_Sphere(point(longitude, latitude), point(?, ?)) <= ?", lng, lat, 5000)
+    return b
+}
+```
+
+## 10. Chain of Responsibility Pattern
+- Mục đích: Xử lý request theo chuỗi
+- Vị trí áp dụng:
+  + `middleware/auth.go`: Xác thực
+- Ví dụ code:
+```go
+type Middleware interface {
+    Handle(next http.Handler) http.Handler
+}
+
+type AuthMiddleware struct{}
+type LoggingMiddleware struct{}
+
+func (m *AuthMiddleware) Handle(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        // Auth logic
+        next.ServeHTTP(w, r)
     })
 }
-
-func BadRequest(c *gin.Context, message string) {
-    c.JSON(http.StatusBadRequest, gin.H{
-        "status":  "error",
-        "message": message,
-    })
-}
-
-func Unauthorized(c *gin.Context) {
-    c.JSON(http.StatusUnauthorized, gin.H{
-        "status":  "error",
-        "message": "Unauthorized access",
-    })
-}
 ```
-- Lợi ích:
-  + Thống nhất cách xử lý response
-  + Dễ dàng thêm các loại response mới
-  + Code sạch và dễ bảo trì
 
-6. CHAIN OF RESPONSIBILITY PATTERN
-- Vị trí: Middleware authentication
-- Công dụng: Xử lý request theo chuỗi, mỗi handler có thể xử lý hoặc chuyển tiếp
-- Cách triển khai:
-  + AuthMiddleware
-  + RoleMiddleware
-  + PermissionMiddleware
-- Code ví dụ:
+## 11. Command Pattern
+- Mục đích: Xử lý request như các command riêng biệt
+- Vị trí áp dụng:
+  + `controllers/order_controller.go`: Xử lý đơn hàng
+- Ví dụ code:
 ```go
-// middleware/auth.go
-func AuthMiddleware() gin.HandlerFunc {
-    return func(c *gin.Context) {
-        token := c.GetHeader("Authorization")
-        if token == "" {
-            response.Unauthorized(c)
-            c.Abort()
-            return
-        }
-        // Xử lý token
-        c.Next()
-    }
-}
-
-func RoleMiddleware(roles ...string) gin.HandlerFunc {
-    return func(c *gin.Context) {
-        userRole := c.GetString("user_role")
-        for _, role := range roles {
-            if role == userRole {
-                c.Next()
-                return
-            }
-        }
-        response.Forbidden(c)
-        c.Abort()
-    }
-}
-```
-- Lợi ích:
-  + Tách biệt logic xử lý request
-  + Dễ dàng thêm/bớt middleware
-  + Linh hoạt trong việc xử lý request
-
-7. REPOSITORY PATTERN
-- Vị trí: Tổ chức code với models và controllers
-- Công dụng: Tách biệt logic truy cập dữ liệu khỏi business logic
-- Cách triển khai:
-  + Models định nghĩa cấu trúc dữ liệu
-  + Controllers xử lý business logic
-  + Services xử lý logic phức tạp
-- Code ví dụ:
-```go
-// models/user.go
-type User struct {
-    ID       uint   `gorm:"primarykey"`
-    Username string `gorm:"unique"`
-    Email    string `gorm:"unique"`
-    Role     string
-}
-
-// controllers/user_controller.go
-func (uc *UserController) GetUserByID(c *gin.Context) {
-    id := c.Param("id")
-    var user models.User
-    if err := uc.db.First(&user, id).Error; err != nil {
-        response.NotFound(c)
-        return
-    }
-    response.Success(c, user)
-}
-```
-- Lợi ích:
-  + Tách biệt các concern
-  + Dễ dàng thay đổi data source
-  + Code dễ test và bảo trì
-
-8. COMMAND PATTERN
-- Vị trí: commands/order_commands.go
-- Công dụng: Đóng gói các thao tác thành các command riêng biệt
-- Cách triển khai:
-  + CreateOrderCommand
-  + UpdateOrderCommand
-  + DeleteOrderCommand
-- Code ví dụ:
-```go
-// commands/order_commands.go
-type OrderCommand interface {
+type Command interface {
     Execute() error
 }
 
 type CreateOrderCommand struct {
     order *models.Order
-    db    *gorm.DB
 }
 
 func (c *CreateOrderCommand) Execute() error {
-    return c.db.Create(c.order).Error
-}
-
-type UpdateOrderCommand struct {
-    order *models.Order
-    db    *gorm.DB
-}
-
-func (c *UpdateOrderCommand) Execute() error {
-    return c.db.Save(c.order).Error
+    // Create order logic
+    return nil
 }
 ```
-- Lợi ích:
-  + Hỗ trợ undo/redo
-  + Dễ dàng thêm thao tác mới
-  + Tách biệt logic thực thi
 
-9. STATE PATTERN
-- Vị trí: models/order_state.go
-- Công dụng: Quản lý trạng thái của đơn hàng
-- Cách triển khai:
-  + PendingState
-  + ConfirmedState
-  + CompletedState
-  + CancelledState
-- Code ví dụ:
+## 12. State Pattern
+- Mục đích: Quản lý trạng thái của đối tượng
+- Vị trí áp dụng:
+  + `models/order.go`: Trạng thái đơn hàng
+- Ví dụ code:
 ```go
-// models/order_state.go
 type OrderState interface {
-    Confirm(order *Order) error
-    Cancel(order *Order) error
-    Complete(order *Order) error
+    Process(order *Order) error
 }
 
 type PendingState struct{}
+type ConfirmedState struct{}
+type CompletedState struct{}
 
-func (s *PendingState) Confirm(order *Order) error {
-    order.Status = OrderStatusConfirmed
-    return nil
-}
-
-func (s *PendingState) Cancel(order *Order) error {
-    order.Status = OrderStatusCancelled
-    return nil
-}
-
-func (s *PendingState) Complete(order *Order) error {
-    return errors.New("cannot complete pending order")
-}
-```
-- Lợi ích:
-  + Quản lý trạng thái rõ ràng
-  + Dễ dàng thêm trạng thái mới
-  + Giảm điều kiện if/else
-
-10. TEMPLATE METHOD PATTERN
-- Vị trí: services/booking_process.go
-- Công dụng: Định nghĩa khung cho các quy trình đặt phòng
-- Cách triển khai:
-  + StandardBooking
-  + ExpressBooking
-- Code ví dụ:
-```go
-// services/booking_process.go
-type BookingProcess interface {
-    ValidateBooking() error
-    ProcessPayment() error
-    SendConfirmation() error
-}
-
-type StandardBooking struct {
-    order *models.Order
-}
-
-func (b *StandardBooking) ValidateBooking() error {
-    // Validate booking logic
-    return nil
-}
-
-func (b *StandardBooking) ProcessPayment() error {
-    // Process payment logic
-    return nil
-}
-
-func (b *StandardBooking) SendConfirmation() error {
-    // Send confirmation logic
+func (s *PendingState) Process(order *Order) error {
+    // Process pending order
     return nil
 }
 ```
-- Lợi ích:
-  + Tái sử dụng code
-  + Dễ dàng thêm quy trình mới
-  + Đảm bảo tính nhất quán
 
-11. FACADE PATTERN
-- Vị trí: services/booking_facade.go
-- Công dụng: Đơn giản hóa việc tương tác với các service
-- Cách triển khai:
-  + OrderService
-  + PaymentService
-  + NotificationService
-- Code ví dụ:
+## 13. Proxy Pattern
+- Mục đích: Cache kết quả truy vấn
+- Vị trí áp dụng:
+  + `services/accommodation_service.go`: Cache danh sách chỗ ở
+- Ví dụ code:
 ```go
-// services/booking_facade.go
-type BookingFacade struct {
-    orderService       *OrderService
-    paymentService    *PaymentService
-    notificationService *NotificationService
+type AccommodationProxy struct {
+    service *AccommodationService
+    cache   *redis.Client
 }
 
-func (f *BookingFacade) CreateBooking(order *models.Order) error {
-    if err := f.orderService.Create(order); err != nil {
-        return err
+func (p *AccommodationProxy) GetAll() ([]models.Accommodation, error) {
+    // Check cache first
+    if cached, err := p.cache.Get("accommodations").Result(); err == nil {
+        return unmarshalAccommodations(cached)
     }
-    if err := f.paymentService.Process(order); err != nil {
-        return err
+    // If not in cache, get from service
+    accommodations, err := p.service.GetAll()
+    if err != nil {
+        return nil, err
     }
-    return f.notificationService.SendConfirmation(order)
+    // Cache the result
+    p.cache.Set("accommodations", marshalAccommodations(accommodations), time.Hour)
+    return accommodations, nil
 }
 ```
-- Lợi ích:
-  + Giảm độ phức tạp
-  + Dễ dàng sử dụng
-  + Tách biệt các service
 
-12. BUILDER PATTERN
-- Vị trí: builders/order_builder.go
-- Công dụng: Tạo đối tượng phức tạp theo từng bước
-- Cách triển khai:
-  + WithUser
-  + WithRoom
-  + WithStatus
-  + WithGuestInfo
-- Code ví dụ:
+## 14. Decorator Pattern
+- Mục đích: Thêm tính năng bảo mật
+- Vị trí áp dụng:
+  + `middleware/auth.go`: Xác thực
+- Ví dụ code:
 ```go
-// builders/order_builder.go
-type OrderBuilder struct {
-    order *models.Order
+type Service interface {
+    Process() error
 }
 
-func NewOrderBuilder() *OrderBuilder {
-    return &OrderBuilder{
-        order: &models.Order{},
+type SecureService struct {
+    service Service
+}
+
+func (s *SecureService) Process() error {
+    // Add security checks
+    return s.service.Process()
+}
+```
+
+## 15. Facade Pattern
+- Mục đích: Đơn giản hóa việc khởi tạo ứng dụng
+- Vị trí áp dụng:
+  + `config/init.go`: InitApp()
+- Ví dụ code:
+```go
+type AppFacade struct {
+    db      *gorm.DB
+    redis   *redis.Client
+    config  *Config
+}
+
+func NewAppFacade() *AppFacade {
+    return &AppFacade{
+        db:     initDB(),
+        redis:  initRedis(),
+        config: loadConfig(),
     }
 }
-
-func (b *OrderBuilder) WithUser(userID uint) *OrderBuilder {
-    b.order.UserID = &userID
-    return b
-}
-
-func (b *OrderBuilder) WithRoom(roomIDs []uint) *OrderBuilder {
-    b.order.RoomID = roomIDs
-    return b
-}
-
-func (b *OrderBuilder) WithStatus(status int) *OrderBuilder {
-    b.order.Status = status
-    return b
-}
-
-func (b *OrderBuilder) Build() *models.Order {
-    return b.order
-}
 ```
-- Lợi ích:
-  + Code dễ đọc
-  + Linh hoạt trong việc tạo đối tượng
-  + Dễ dàng mở rộng
 
 Lợi ích chung khi sử dụng các Design Pattern:
 1. Code dễ bảo trì và mở rộng
