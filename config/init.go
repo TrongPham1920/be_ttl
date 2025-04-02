@@ -10,8 +10,6 @@ import (
 	"github.com/olahol/melody"
 	"github.com/redis/go-redis/v9"
 	"github.com/robfig/cron/v3"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 var RedisClient *redis.Client // Thay đổi kiểu dữ liệu từ interface{} sang *redis.Client
@@ -64,12 +62,11 @@ func initComponents() error {
 
 // configureCORS cấu hình CORS cho router
 func configureCORS(router *gin.Engine) {
-	configCors := cors.DefaultConfig()
-	configCors.AddAllowHeaders("Authorization")
-	configCors.AllowCredentials = true
-	configCors.AllowAllOrigins = false
-	configCors.AllowOriginFunc = func(origin string) bool {
-		return true
+	configCors := cors.Config{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
+		MaxAge:       12 * time.Hour,
 	}
 	router.Use(cors.New(configCors))
 }
@@ -102,7 +99,3 @@ func InitWebSocket(router *gin.Engine, m *melody.Melody) {
 }
 
 // InitSwagger khởi tạo Swagger documentation
-func InitSwagger(router *gin.Engine) {
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	log.Println("Swagger documentation initialized successfully")
-}

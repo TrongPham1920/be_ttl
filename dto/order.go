@@ -1,23 +1,22 @@
 package dto
 
 import (
-	"new/types"
 	"time"
 )
 
 // OrderResponse là DTO cho response của order
 type OrderResponse struct {
-	ID              uint                      `json:"id"`
-	OrderCode       string                    `json:"orderCode"`
-	UserID          uint                      `json:"userId"`
-	AccommodationID uint                      `json:"accommodationId"`
-	TotalPrice      float64                   `json:"totalPrice"`
-	PaidAmount      float64                   `json:"paidAmount"`
-	Status          int                       `json:"status"`
-	CreatedAt       string                    `json:"createdAt"`
-	UpdatedAt       string                    `json:"updatedAt"`
-	User            types.InvoiceUserResponse `json:"user"`
-	Accommodation   AccommodationResponse     `json:"accommodation"`
+	ID              uint                  `json:"id"`
+	OrderCode       string                `json:"orderCode"`
+	UserID          uint                  `json:"userId"`
+	AccommodationID uint                  `json:"accommodationId"`
+	TotalPrice      float64               `json:"totalPrice"`
+	PaidAmount      float64               `json:"paidAmount"`
+	Status          int                   `json:"status"`
+	CreatedAt       string                `json:"createdAt"`
+	UpdatedAt       string                `json:"updatedAt"`
+	User            InvoiceUserResponse   `json:"user"`
+	Accommodation   AccommodationResponse `json:"accommodation"`
 }
 
 // ActorResponse là DTO cho thông tin user/actor
