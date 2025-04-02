@@ -38,11 +38,13 @@ func main() {
 		log.Fatalf("Failed to initialize app: %v", err)
 	}
 
+	// Cấu hình CORS
 	configCors := cors.DefaultConfig()
 	configCors.AllowOrigins = []string{"*"}
 	configCors.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	configCors.AllowHeaders = []string{"Authorization", "Content-Type"}
-	configCors.AllowCredentials = true
+	configCors.AllowHeaders = []string{"Authorization", "Content-Type", "Accept", "Origin"}
+	configCors.AllowCredentials = false // Tắt credentials vì đang dùng wildcard
+	configCors.MaxAge = 12 * time.Hour
 	router.Use(cors.New(configCors))
 	router.SetTrustedProxies(nil)
 
