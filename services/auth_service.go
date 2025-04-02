@@ -8,9 +8,11 @@ import (
 	"net/smtp"
 	"new/config"
 	"new/models"
+	"strings"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/fiam/gounidecode/unidecode"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -503,7 +505,8 @@ func ApplyDiscountForUser(user models.User) (float64, error) {
 	var applicableDiscount models.Discount
 
 	for _, discount := range discounts {
-		if discount.ID == 1 {
+		normalizedName := strings.ToLower(unidecode.Unidecode(discount.Name))
+		if normalizedName == "newuser" {
 			applicableDiscount = discount
 			break
 		}
