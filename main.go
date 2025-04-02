@@ -14,6 +14,7 @@ import (
 	"new/services"
 	"new/services/logger"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
@@ -36,6 +37,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize app: %v", err)
 	}
+
+	configCors := cors.DefaultConfig()
+	configCors.AddAllowHeaders("Authorization")
+	configCors.AllowCredentials = true
+	configCors.AllowAllOrigins = false
+	configCors.AllowOriginFunc = func(origin string) bool {
+		return true
+	}
+	router.Use(cors.New(configCors))
 
 	// Khởi tạo các services
 	userService := services.NewUserService(services.UserServiceOptions{

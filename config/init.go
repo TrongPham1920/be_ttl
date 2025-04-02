@@ -5,7 +5,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/olahol/melody"
 	"github.com/redis/go-redis/v9"
@@ -29,9 +28,6 @@ func InitApp() (*gin.Engine, *melody.Melody, *cron.Cron, error) {
 
 	// Khởi tạo cron
 	c := cron.New()
-
-	// Cấu hình CORS
-	configureCORS(router)
 
 	return router, m, c, nil
 }
@@ -58,17 +54,6 @@ func initComponents() error {
 
 	log.Println("All components initialized successfully")
 	return nil
-}
-
-// configureCORS cấu hình CORS cho router
-func configureCORS(router *gin.Engine) {
-	configCors := cors.Config{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders: []string{"Origin", "Content-Length", "Content-Type", "Authorization"},
-		MaxAge:       12 * time.Hour,
-	}
-	router.Use(cors.New(configCors))
 }
 
 // InitCronJobs khởi tạo các cron jobs
