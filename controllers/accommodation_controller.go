@@ -283,14 +283,18 @@ func GetAllAccommodations(c *gin.Context) {
 
 		accommodationsResponse := make([]dto.AccommodationResponse, 0)
 		for _, acc := range allAccommodations {
-
+			benefits := make([]dto.BenefitAcc, len(acc.Benefits))
+			for i, b := range acc.Benefits {
+				benefits[i] = dto.BenefitAcc{
+					Id:   b.Id,
+					Name: b.Name,
+				}
+			}
 			accommodationsResponse = append(accommodationsResponse, dto.AccommodationResponse{
 				ID:               acc.ID,
 				Type:             acc.Type,
 				Name:             acc.Name,
 				Address:          acc.Address,
-				CreateAt:         acc.CreateAt,
-				UpdateAt:         acc.UpdateAt,
 				Avatar:           acc.Avatar,
 				ShortDescription: acc.ShortDescription,
 				Status:           acc.Status,
@@ -302,7 +306,7 @@ func GetAllAccommodations(c *gin.Context) {
 				Province:         acc.Province,
 				District:         acc.District,
 				Ward:             acc.Ward,
-				Benefits:         acc.Benefits,
+				Benefits:         benefits,
 				Longitude:        acc.Longitude,
 				Latitude:         acc.Latitude,
 			})
@@ -403,13 +407,18 @@ func GetAllAccommodations(c *gin.Context) {
 	// Chuẩn bị response
 	accommodationsResponse := make([]dto.AccommodationResponse, 0)
 	for _, acc := range filteredAccommodations {
+		benefits := make([]dto.BenefitAcc, len(acc.Benefits))
+		for i, b := range acc.Benefits {
+			benefits[i] = dto.BenefitAcc{
+				Id:   b.Id,
+				Name: b.Name,
+			}
+		}
 		accommodationsResponse = append(accommodationsResponse, dto.AccommodationResponse{
 			ID:               acc.ID,
 			Type:             acc.Type,
 			Name:             acc.Name,
 			Address:          acc.Address,
-			CreateAt:         acc.CreateAt,
-			UpdateAt:         acc.UpdateAt,
 			Avatar:           acc.Avatar,
 			ShortDescription: acc.ShortDescription,
 			Status:           acc.Status,
@@ -421,7 +430,7 @@ func GetAllAccommodations(c *gin.Context) {
 			Province:         acc.Province,
 			District:         acc.District,
 			Ward:             acc.Ward,
-			Benefits:         acc.Benefits,
+			Benefits:         benefits,
 			Longitude:        acc.Longitude,
 			Latitude:         acc.Latitude,
 		})
@@ -817,17 +826,23 @@ func GetAllAccommodationsForUser(c *gin.Context) {
 	// Lấy dữ liệu từ Redis
 	if err := services.GetFromRedis(config.Ctx, rdb, cacheKey, &allAccommodations); err != nil || len(allAccommodations) == 0 {
 		// Nếu không có dữ liệu trong Redis, lấy từ Database
-		if err := loadAccommodationsFromDB(&allAccommodations); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "mess": "Không thể lấy danh sách chỗ ở"})
+		var accommodations []models.Accommodation
+		if err := config.DB.
+			Preload("Rooms").
+			Preload("Rates").
+			Preload("Benefits").
+			Preload("User").
+			Preload("User.Banks").
+			Find(&accommodations).Error; err != nil {
+			log.Printf("Lỗi khi lấy danh sách chỗ ở từ Database: %v", err)
 			return
 		}
 
-		// Ép kiểu sang AccommodationResponse
-		accommodationsResponse := make([]dto.AccommodationDetailResponse, 0)
-		for _, acc := range allAccommodations {
-			// Lấy thông tin User
+		// Chuyển đổi sang DTO (Data Transfer Object)
+		accommodationsResponse := make([]dto.AccommodationDetailResponse, len(accommodations))
+		for i, acc := range accommodations {
 			user := acc.User
-			accommodationsResponse = append(accommodationsResponse, dto.AccommodationDetailResponse{
+			accommodationsResponse[i] = dto.AccommodationDetailResponse{
 				ID:               acc.ID,
 				Type:             acc.Type,
 				Name:             acc.Name,
@@ -852,17 +867,14 @@ func GetAllAccommodationsForUser(c *gin.Context) {
 				Longitude:        acc.Longitude,
 				Latitude:         acc.Latitude,
 				User: dto.Actor{
-					Name:          user.Name,
-					Email:         user.Email,
-					PhoneNumber:   user.PhoneNumber,
-					BankShortName: user.Banks[0].BankShortName,
-					AccountNumber: user.Banks[0].AccountNumber,
-					BankName:      user.Banks[0].BankName,
+					Name:        user.Name,
+					Email:       user.Email,
+					PhoneNumber: user.PhoneNumber,
 				},
-			})
+			}
 		}
 
-		// Lưu dữ liệu đã ép kiểu vào Redis
+		// Lưu dữ liệu vào Redis
 		if err := services.SetToRedis(config.Ctx, rdb, cacheKey, accommodationsResponse, 60*time.Minute); err != nil {
 			log.Printf("Lỗi khi lưu danh sách chỗ ở vào Redis: %v", err)
 		}
@@ -936,13 +948,18 @@ func GetAllAccommodationsForUser(c *gin.Context) {
 	// Chuẩn bị response
 	accommodationsResponse := make([]dto.AccommodationResponse, 0)
 	for _, acc := range filteredAccommodations {
+		benefits := make([]dto.BenefitAcc, len(acc.Benefits))
+		for i, b := range acc.Benefits {
+			benefits[i] = dto.BenefitAcc{
+				Id:   b.Id,
+				Name: b.Name,
+			}
+		}
 		accommodationsResponse = append(accommodationsResponse, dto.AccommodationResponse{
 			ID:               acc.ID,
 			Type:             acc.Type,
 			Name:             acc.Name,
 			Address:          acc.Address,
-			CreateAt:         acc.CreateAt,
-			UpdateAt:         acc.UpdateAt,
 			Avatar:           acc.Avatar,
 			ShortDescription: acc.ShortDescription,
 			Status:           acc.Status,
@@ -954,7 +971,7 @@ func GetAllAccommodationsForUser(c *gin.Context) {
 			Province:         acc.Province,
 			District:         acc.District,
 			Ward:             acc.Ward,
-			Benefits:         acc.Benefits,
+			Benefits:         benefits,
 			Longitude:        acc.Longitude,
 			Latitude:         acc.Latitude,
 		})

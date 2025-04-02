@@ -41,11 +41,9 @@ func main() {
 	configCors := cors.DefaultConfig()
 	configCors.AddAllowHeaders("Authorization")
 	configCors.AllowCredentials = true
-	configCors.AllowAllOrigins = false
-	configCors.AllowOriginFunc = func(origin string) bool {
-		return true
-	}
+	configCors.AllowAllOrigins = true
 	router.Use(cors.New(configCors))
+	router.SetTrustedProxies(nil)
 
 	// Khởi tạo các services
 	userService := services.NewUserService(services.UserServiceOptions{

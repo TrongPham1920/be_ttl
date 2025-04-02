@@ -40,26 +40,29 @@ type Actor struct {
 }
 
 type AccommodationResponse struct {
-	ID               uint   `json:"id"`
-	Type             int    `json:"type"`
-	Province         string `json:"province"`
-	Name             string `json:"name"`
-	Address          string `json:"address"`
-	CreateAt         time.Time
-	UpdateAt         time.Time
-	Avatar           string           `json:"avatar"`
-	ShortDescription string           `json:"shortDescription"`
-	Status           int              `json:"status"`
-	Num              int              `json:"num"`
-	People           int              `json:"people"`
-	Price            int              `json:"price"`
-	NumBed           int              `json:"numBed"`
-	NumTolet         int              `json:"numTolet"`
-	District         string           `json:"district"`
-	Ward             string           `json:"ward"`
-	Longitude        float64          `json:"longitude"`
-	Latitude         float64          `json:"latitude"`
-	Benefits         []models.Benefit `json:"benefits"`
+	ID               uint         `json:"id"`
+	Type             int          `json:"type"`
+	Province         string       `json:"province"`
+	Name             string       `json:"name"`
+	Address          string       `json:"address"`
+	Avatar           string       `json:"avatar"`
+	ShortDescription string       `json:"shortDescription"`
+	Status           int          `json:"status"`
+	Num              int          `json:"num"`
+	People           int          `json:"people"`
+	Price            int          `json:"price"`
+	NumBed           int          `json:"numBed"`
+	NumTolet         int          `json:"numTolet"`
+	District         string       `json:"district"`
+	Ward             string       `json:"ward"`
+	Longitude        float64      `json:"longitude"`
+	Latitude         float64      `json:"latitude"`
+	Benefits         []BenefitAcc `json:"benefits"`
+}
+
+type BenefitAcc struct {
+	Id   int    `json:"id"`
+	Name string `json:"name"`
 }
 
 type AccommodationResponseTest struct {
