@@ -15,15 +15,13 @@ import (
 )
 
 const (
-	// RevenueShareRate tỷ lệ chia sẻ doanh thu cho user
 	RevenueShareRate = 0.7
-	// Timezone mặc định
+
 	DefaultTimezone = "Asia/Ho_Chi_Minh"
-	// MinRevenue giá trị doanh thu tối thiểu
+
 	MinRevenue = 0
 )
 
-// Error codes
 const (
 	ErrCodeInvalidTimezone = "INVALID_TIMEZONE"
 	ErrCodeNoRevenue       = "NO_REVENUE"
@@ -32,7 +30,6 @@ const (
 	ErrCodeInvalidUserID   = "INVALID_USER_ID"
 )
 
-// ServiceError định nghĩa lỗi của service
 type ServiceError struct {
 	Code    string
 	Message string
@@ -46,25 +43,21 @@ func (e *ServiceError) Error() string {
 	return fmt.Sprintf("[%s] %s", e.Code, e.Message)
 }
 
-// UserServiceInterface định nghĩa các phương thức của UserService
 type UserServiceInterface interface {
 	GetTodayUserRevenue(ctx context.Context) ([]models.UserRevenue, error)
 	UpdateUserAmounts(ctx context.Context, notificationService notification.Service) error
 }
 
-// UserService xử lý các logic liên quan đến user
 type UserService struct {
 	db     *gorm.DB
 	logger logger.Logger
 }
 
-// UserServiceOptions định nghĩa các options cho UserService
 type UserServiceOptions struct {
 	DB     *gorm.DB
 	Logger logger.Logger
 }
 
-// NewUserService tạo một instance mới của UserService
 func NewUserService(opts UserServiceOptions) *UserService {
 	return &UserService{
 		db:     opts.DB,
@@ -72,7 +65,6 @@ func NewUserService(opts UserServiceOptions) *UserService {
 	}
 }
 
-// validateRevenue kiểm tra tính hợp lệ của doanh thu
 func validateRevenue(revenue float64) error {
 	if revenue < MinRevenue {
 		return &ServiceError{
@@ -83,7 +75,6 @@ func validateRevenue(revenue float64) error {
 	return nil
 }
 
-// validateUserID kiểm tra tính hợp lệ của user ID
 func validateUserID(userID uint) error {
 	if userID == 0 {
 		return &ServiceError{
@@ -94,7 +85,6 @@ func validateUserID(userID uint) error {
 	return nil
 }
 
-// GetTodayUserRevenue lấy danh sách doanh thu trong ngày hôm nay
 func (s *UserService) GetTodayUserRevenue(ctx context.Context) ([]models.UserRevenue, error) {
 	var revenues []models.UserRevenue
 
@@ -121,7 +111,6 @@ func (s *UserService) GetTodayUserRevenue(ctx context.Context) ([]models.UserRev
 	return revenues, nil
 }
 
-// updateUserAmount cập nhật số tiền cho một user
 func (s *UserService) updateUserAmount(ctx context.Context, tx *gorm.DB, userID uint, revenue float64) error {
 	if err := validateUserID(userID); err != nil {
 		return err
@@ -147,13 +136,11 @@ func (s *UserService) updateUserAmount(ctx context.Context, tx *gorm.DB, userID 
 	return nil
 }
 
-// sendNotification gửi thông báo qua notification service
 func (s *UserService) sendNotification(notificationService notification.Service, userID uint, revenue float64) error {
 	message := notification.NewMessageBuilder(userID, revenue).Build()
 	return notificationService.SendMessage(message)
 }
 
-// UpdateUserAmounts cập nhật amount của user dựa trên revenue hôm nay
 func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService notification.Service) error {
 	revenues, err := s.GetTodayUserRevenue(ctx)
 	if err != nil {
@@ -169,7 +156,6 @@ func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService
 		}
 	}
 
-	// Bắt đầu transaction
 	tx := s.db.WithContext(ctx).Begin()
 	if tx.Error != nil {
 		return &ServiceError{
@@ -201,19 +187,16 @@ func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService
 	return nil
 }
 
-// UserServiceAdapter chuyển đổi UserService thành UserAmountUpdater
 type UserServiceAdapter struct {
 	service *UserService
 }
 
-// NewUserServiceAdapter tạo một instance mới của UserServiceAdapter
 func NewUserServiceAdapter(service *UserService) *UserServiceAdapter {
 	return &UserServiceAdapter{
 		service: service,
 	}
 }
 
-// UpdateUserAmounts implement UserAmountUpdater interface
 func (a *UserServiceAdapter) UpdateUserAmounts(m *melody.Melody) error {
 	notificationService := notification.NewMelodyService(m)
 	return a.service.UpdateUserAmounts(context.Background(), notificationService)

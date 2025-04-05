@@ -14,8 +14,6 @@ import (
 	"new/services"
 	"new/services/logger"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
@@ -32,24 +30,11 @@ func main() {
 		log.Printf("Warning: không load được file .env, sử dụng biến môi trường có sẵn: %v", err)
 	}
 
-	// Khởi tạo ứng dụng
 	router, m, c, err := config.InitApp()
 	if err != nil {
 		log.Fatalf("Failed to initialize app: %v", err)
 	}
 
-	// Cấu hình CORS
-	configCors := cors.DefaultConfig()
-	configCors.AddAllowHeaders("Authorization")
-	configCors.AllowCredentials = true
-	configCors.AllowAllOrigins = false
-	configCors.AllowOriginFunc = func(origin string) bool {
-		return true
-	}
-	router.Use(cors.New(configCors))
-	router.SetTrustedProxies(nil)
-
-	// Khởi tạo các services
 	userService := services.NewUserService(services.UserServiceOptions{
 		DB:     config.DB,
 		Logger: logger.NewDefaultLogger(logger.InfoLevel),
@@ -59,23 +44,14 @@ func main() {
 
 	recreateUserTable()
 
-	// Khởi tạo cron jobs
 	if err := jobs.InitCronJobs(c, m); err != nil {
 		log.Fatalf("Failed to initialize cron jobs: %v", err)
 	}
 
-	// Khởi tạo WebSocket
 	config.InitWebSocket(router, m)
 
-	// Setup các routes của ứng dụng
 	routes.SetupRoutes(router, config.DB, config.RedisClient, config.Cloudinary, m)
 
-	// Endpoint ping
-	router.GET("/ping", func(c *gin.Context) {
-		c.String(http.StatusOK, "pong")
-	})
-
-	// Goroutine tự động gọi endpoint /ping mỗi 5 phút
 	go func() {
 		pingURL := "https://backend.trothalo.click/ping"
 		for {
@@ -91,7 +67,6 @@ func main() {
 		}
 	}()
 
-	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8083"

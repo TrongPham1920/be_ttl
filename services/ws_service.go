@@ -13,7 +13,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// GetTodayUserRevenue lấy danh sách doanh thu trong ngày hôm nay
 func GetTodayUserRevenue() ([]models.UserRevenue, error) {
 	var revenues []models.UserRevenue
 
@@ -32,7 +31,6 @@ func GetTodayUserRevenue() ([]models.UserRevenue, error) {
 	return revenues, nil
 }
 
-// UpdateUserAmounts cập nhật amount của user dựa trên revenue hôm nay
 func UpdateUserAmounts(m *melody.Melody) error {
 	db := config.DB
 
@@ -56,13 +54,12 @@ func UpdateUserAmounts(m *melody.Melody) error {
 		if err := tx.Model(&models.User{}).
 			Where("id = ?", rev.UserID).
 			Update("amount", gorm.Expr("amount + ?", adjustedRevenue)).Error; err != nil {
-			tx.Rollback() // Nếu có lỗi, rollback transaction
+			tx.Rollback()
 			log.Printf("❌ Lỗi cập nhật amount cho user %d: %v\n", rev.UserID, err)
 			return err
 		}
 		log.Printf("✅ Cập nhật thành công user_id %d: +%.2f\n", rev.UserID, rev.Revenue)
 
-		//thông báo
 		message := fmt.Sprintf("🔔 User %d đã được cộng %.2f vào tài khoản.", rev.UserID, rev.Revenue)
 		m.Broadcast([]byte(message))
 	}
