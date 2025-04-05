@@ -1,0 +1,122 @@
+# Phân tích Design Pattern trong dự án
+
+## 1. Repository Pattern
+- Mục đích: Tách biệt logic truy cập dữ liệu
+- Vị trí áp dụng:
+  + `services/auth_service.go`:
+    * GetUserByEmail() - Lấy user theo email
+    * GetUserByPhoneNumber() - Lấy user theo số điện thoại
+    * CreateUser() - Tạo user mới
+  + `services/user_service.go`:
+    * Xử lý các thao tác liên quan đến user
+
+## 2. Service Pattern
+- Mục đích: Xử lý business logic
+- Vị trí áp dụng:
+  + `services/auth_service.go`:
+    * CreateUser() - Tạo user mới
+    * CreateGoogleUser() - Tạo user từ Google
+    * VerifyEmail() - Xác thực email
+  + `services/user_service.go`:
+    * Xử lý các thao tác liên quan đến user
+
+## 3. Factory Pattern
+- Mục đích: Tạo instance của service
+- Vị trí áp dụng:
+  + `services/auth_service.go`:
+    * GenerateToken() - Tạo token
+    * generateVerificationCode() - Tạo mã xác thực
+
+## 4. Adapter Pattern
+- Mục đích: Chuyển đổi interface
+- Vị trí áp dụng:
+  + `services/auth_service.go`:
+    * Claims struct - Chuyển đổi giữa JWT và user info
+    * UserInfo struct - Chuyển đổi giữa user và token
+
+## 5. Strategy Pattern
+- Mục đích: Xử lý các chiến lược xác thực
+- Vị trí áp dụng:
+  + `services/auth_service.go`:
+    * CreateUser() - Xử lý tạo user thường
+    * CreateGoogleUser() - Xử lý tạo user từ Google
+
+## 6. Singleton Pattern
+- Mục đích: Quản lý connection
+- Vị trí áp dụng:
+  + `config/database.go`:
+    * GetDB() - Lấy instance database
+  + `config/redis.go`:
+    * GetRedis() - Lấy instance redis
+
+## 7. Observer Pattern
+- Mục đích: Cập nhật tự động
+- Vị trí áp dụng:
+  + `services/auth_service.go`:
+    * UpdateAccommodationRating() - Cập nhật rating
+    * ApplyDiscountForUser() - Cập nhật giảm giá
+
+## 8. Template Method Pattern
+- Mục đích: Định nghĩa quy trình gửi email
+- Vị trí áp dụng:
+  + `services/auth_service.go`:
+    * sendVerificationEmail() - Gửi email xác thực
+    * sendUserEmail() - Gửi email thông tin user
+    * SendOrderEmail() - Gửi email đơn hàng
+    * SendPayEmail() - Gửi email thanh toán
+
+## 9. Chain of Responsibility Pattern
+- Mục đích: Xử lý middleware
+- Vị trí áp dụng:
+  + `middleware/auth.go`:
+    * AuthMiddleware - Xác thực
+    * RoleMiddleware - Phân quyền
+
+## 10. Command Pattern
+- Mục đích: Xử lý request
+- Vị trí áp dụng:
+  + `controllers/user_controller.go`:
+    * Xử lý các request liên quan đến user
+  + `controllers/auth_controller.go`:
+    * Xử lý các request liên quan đến xác thực
+
+## 11. State Pattern
+- Mục đích: Quản lý trạng thái
+- Vị trí áp dụng:
+  + `models/user.go`:
+    * UserStatus - Trạng thái user (verified/unverified)
+
+## 12. Proxy Pattern
+- Mục đích: Cache
+- Vị trí áp dụng:
+  + `services/redis_service.go`:
+    * Cache thông tin user
+    * Cache token
+
+## 13. Decorator Pattern
+- Mục đích: Thêm tính năng
+- Vị trí áp dụng:
+  + `middleware/auth.go`:
+    * AuthMiddleware - Thêm xác thực
+  + `middleware/logging.go`:
+    * LoggingMiddleware - Thêm ghi log
+
+## 14. Facade Pattern
+- Mục đích: Đơn giản hóa khởi tạo
+- Vị trí áp dụng:
+  + `config/init.go`:
+    * InitApp() - Khởi tạo ứng dụng
+  + `main.go`:
+    * Khởi tạo và cấu hình các service
+
+Lợi ích chung khi sử dụng các Design Pattern:
+1. Code dễ bảo trì và mở rộng
+2. Giảm sự phụ thuộc giữa các thành phần
+3. Tăng khả năng tái sử dụng code
+4. Dễ dàng test
+5. Tăng tính linh hoạt của hệ thống
+6. Giảm độ phức tạp của code
+7. Dễ dàng thêm tính năng mới
+8. Tăng tính bảo mật
+9. Tối ưu hiệu năng
+10. Dễ dàng quản lý lỗi 
