@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -63,14 +63,18 @@ func main() {
 			if err != nil {
 				log.Printf("Error pinging /ping endpoint: %v", err)
 			} else {
-				body, _ := ioutil.ReadAll(resp.Body)
+				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
 				log.Printf("Ping response: %s", string(body))
 			}
 			time.Sleep(5 * time.Minute)
 		}
 	}()
-
+	//Elastic dùng để Index dữ liệu hoặc xóa index
+	services.ConnectElastic()
+	// services.IndexHotelsToES()
+	// services.DeleteIndex("accommodations")
+	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8083"
