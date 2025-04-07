@@ -16,9 +16,7 @@ import (
 
 const (
 	RevenueShareRate = 0.7
-
 	DefaultTimezone = "Asia/Ho_Chi_Minh"
-
 	MinRevenue = 0
 )
 
