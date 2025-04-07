@@ -14,6 +14,7 @@ import (
 	"new/services"
 	"new/services/logger"
 
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
 
@@ -51,6 +52,10 @@ func main() {
 	config.InitWebSocket(router, m)
 
 	routes.SetupRoutes(router, config.DB, config.RedisClient, config.Cloudinary, m)
+
+	router.GET("/ping", func(c *gin.Context) {
+		c.String(http.StatusOK, "pong")
+	})
 
 	go func() {
 		pingURL := "https://backend.trothalo.click/ping"
