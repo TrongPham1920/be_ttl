@@ -263,7 +263,7 @@ func GetUnavailableAccommodationIDs(fromDate, toDate string) ([]uint, error) {
 		Select("accommodation_id").
 		Where("from_date <= ? AND to_date >= ?", toDate, fromDate).
 		Group("accommodation_id").
-		Scan(&ids).Error
+		Pluck("accommodation_id", &ids).Error
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +278,6 @@ func SearchAccommodationsWithFilters(params map[string]string) ([]models.Accommo
 		if toDate, ok2 := params["toDate"]; ok2 && toDate != "" {
 			unavailableIDs, err := GetUnavailableAccommodationIDs(fromDate, toDate)
 			if err == nil && len(unavailableIDs) > 0 {
-				// Thêm must_not để loại bỏ các accommodation bị trùng lịch
 				filters = append(filters, map[string]interface{}{
 					"bool": map[string]interface{}{
 						"must_not": map[string]interface{}{
@@ -297,7 +296,6 @@ func SearchAccommodationsWithFilters(params map[string]string) ([]models.Accommo
 	return ExecuteESQuery(queryBody)
 }
 
-// Build filters array
 func BuildFilters(params map[string]string) []map[string]interface{} {
 	filters := []map[string]interface{}{}
 
@@ -333,19 +331,6 @@ func BuildFilters(params map[string]string) []map[string]interface{} {
 		filters = append(filters, map[string]interface{}{
 			"terms": map[string]interface{}{"benefitIds": benefitIDs},
 		})
-	}
-	if fromDate, ok := params["fromDate"]; ok && fromDate != "" {
-		if toDate, ok2 := params["toDate"]; ok2 && toDate != "" {
-			filters = append(filters, map[string]interface{}{
-				"range": map[string]interface{}{
-					"availableDates": map[string]interface{}{
-						"gte":    fromDate,
-						"lte":    toDate,
-						"format": "yyyy-MM-dd",
-					},
-				},
-			})
-		}
 	}
 
 	return filters
