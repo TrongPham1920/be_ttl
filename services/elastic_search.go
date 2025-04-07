@@ -45,7 +45,7 @@ func ConnectElastic() {
 func GetAllAccommodationsForIndexing() ([]map[string]interface{}, error) {
 	var accommodations []models.Accommodation
 
-	err := config.DB.Preload("Benefits").Preload("Rooms").Preload("User").Find(&accommodations).Error
+	err := config.DB.Preload("Benefits").Preload("Rooms").Preload("User").Preload("AccommodationStatuses").Find(&accommodations).Error
 	if err != nil {
 		return nil, err
 	}
@@ -256,8 +256,42 @@ func SearchAccommodations(query string) ([]models.Accommodation, error) {
 	return accommodations, nil
 }
 
+func GetUnavailableAccommodationIDs(fromDate, toDate string) ([]uint, error) {
+	var ids []uint
+	err := config.DB.
+		Table("accommodation_statuses").
+		Select("accommodation_id").
+		Where("from_date <= ? AND to_date >= ?", toDate, fromDate).
+		Group("accommodation_id").
+		Scan(&ids).Error
+	if err != nil {
+		return nil, err
+	}
+	return ids, nil
+}
+
 func SearchAccommodationsWithFilters(params map[string]string) ([]models.Accommodation, int, error) {
 	filters := BuildFilters(params)
+
+	// Check fromDate & toDate để loại bỏ các accommodation đã được đặt
+	if fromDate, ok := params["fromDate"]; ok && fromDate != "" {
+		if toDate, ok2 := params["toDate"]; ok2 && toDate != "" {
+			unavailableIDs, err := GetUnavailableAccommodationIDs(fromDate, toDate)
+			if err == nil && len(unavailableIDs) > 0 {
+				// Thêm must_not để loại bỏ các accommodation bị trùng lịch
+				filters = append(filters, map[string]interface{}{
+					"bool": map[string]interface{}{
+						"must_not": map[string]interface{}{
+							"terms": map[string]interface{}{
+								"id": unavailableIDs,
+							},
+						},
+					},
+				})
+			}
+		}
+	}
+
 	boolQuery := BuildBoolQuery(params["search"], filters)
 	queryBody := BuildESQueryBody(boolQuery, params)
 	return ExecuteESQuery(queryBody)
