@@ -61,7 +61,7 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *c
 	v1.PUT("/roomStatus", controllers.ChangeRoomStatus)
 	v1.GET("/checkRoom", controllers.GetRoomBookingDates)
 
-	v1.GET("/accommodationUser", controllers.GetAllAccommodationsForUser)
+	v1.GET("/accommodationUser", controllers.SearchAccommodationsHandler)
 	v1.GET("/accommodation", controllers.GetAllAccommodations)
 	v1.POST("/accommodation", controllers.CreateAccommodation)
 	v1.GET("/accommodation/:id", controllers.GetAccommodationDetail)
@@ -69,6 +69,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *c
 	v1.PUT("/accommodationStatus", controllers.ChangeAccommodationStatus)
 	v1.GET("/checkAcc", controllers.GetAccBookingDates)
 	v1.GET("/accommodationReceptionist", controllers.GetAccommodationReceptionist)
+	v1.GET("/elastic", controllers.SearchAccommodationsHandler)
+	v1.POST("/chat", controllers.ChatSearchHandler)
 
 	v1.GET("/banks", controllers.GetAllBanks)
 	v1.POST("/add-banks", controllers.CreateBank)

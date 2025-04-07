@@ -13,6 +13,7 @@ import (
 	"new/models"
 	"new/response"
 	"new/services"
+
 	"os"
 	"regexp"
 	"sort"
@@ -1548,4 +1549,104 @@ func getLowestPriceFromRooms(rooms []models.Room) int {
 		return 0
 	}
 	return lowestPrice
+}
+
+// SearchAccommodations tìm kiếm chỗ ở dựa trên ElasticSearch
+func SearchAccommodations(c *gin.Context) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 0, "mess": "Authorization header is missing"})
+		return
+	}
+
+	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+	_, _, err := GetUserIDFromToken(tokenString)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"code": 0, "mess": "Invalid token"})
+		return
+	}
+
+	// Lấy query từ request
+	query := c.Query("q")
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"code": 0, "mess": "Missing search query"})
+		return
+	}
+
+	// Gọi service để tìm kiếm trên ElasticSearch
+	accommodations, err := services.SearchAccommodations(query)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "mess": "Search failed", "error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"code": 1, "mess": "Search successful", "data": accommodations})
+}
+
+func SearchAccommodationsHandler(c *gin.Context) {
+	queryParams := map[string]string{
+		"name":      c.Query("name"),
+		"type":      c.Query("type"),
+		"province":  c.Query("province"),
+		"district":  c.Query("district"),
+		"status":    c.Query("status"),
+		"benefitId": c.Query("benefitId"),
+		"numBed":    c.Query("numBed"),
+		"numTolet":  c.Query("numTolet"),
+		"people":    c.Query("people"),
+		"search":    c.Query("search"),
+		"fromDate":  c.Query("fromDate"),
+		"toDate":    c.Query("toDate"),
+		"page":      c.Query("page"),
+		"limit":     c.Query("limit"),
+	}
+
+	accommodations, total, err := services.SearchAccommodationsWithFilters(queryParams)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "mess": "Search failed", "error": err.Error()})
+		return
+	}
+
+	page, _ := strconv.Atoi(queryParams["page"])
+	limit, _ := strconv.Atoi(queryParams["limit"])
+	if page <= 0 {
+		page = 1
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"code": 1,
+		"mess": "Lấy danh sách chỗ ở thành công",
+		"data": accommodations,
+		"pagination": gin.H{
+			"page":  page,
+			"limit": limit,
+			"total": total,
+		},
+	})
+}
+
+func AutocompleteHandler(c *gin.Context) {
+	keyword := c.Query("q")
+	results, err := services.AutocompleteAccommodations(keyword)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, results)
+}
+
+func NearbyHandler(c *gin.Context) {
+	lat, _ := strconv.ParseFloat(c.Query("lat"), 64)
+	lon, _ := strconv.ParseFloat(c.Query("lon"), 64)
+	radius := c.DefaultQuery("radius", "5km")
+
+	results, err := services.NearbyAccommodations(lat, lon, radius)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, results)
 }
