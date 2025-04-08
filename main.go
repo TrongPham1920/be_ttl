@@ -1,7 +1,7 @@
 package main
 
 import (
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +15,7 @@ import (
 	"new/services"
 	"new/services/logger"
 
+	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/olahol/melody"
 )
@@ -23,7 +24,6 @@ func recreateUserTable() {
 	// if err := config.DB.AutoMigrate(&models.Room{}, &models.Benefit{}, &models.User{}, models.Rate{}, models.Order{}, models.Invoice{}, models.Bank{}, models.Accommodation{}, models.AccommodationStatus{}, models.BankFake{}, models.UserDiscount{}, models.Discount{}, models.Holiday{}, models.RoomStatus{}, models.WithdrawalHistory{}); err != nil {
 	// 	panic("Failed to migrate tables: " + err.Error())
 	// }
-
 }
 
 func main() {
@@ -70,6 +70,10 @@ func main() {
 
 	routes.SetupRoutes(router, config.DB, config.RedisClient, config.Cloudinary, m, userService)
 
+	router.GET("/ping", func(c *gin.Context) {
+		c.String(http.StatusOK, "pong")
+	})
+
 	go func() {
 		pingURL := "https://backend.trothalo.click/ping"
 		for {
@@ -77,14 +81,18 @@ func main() {
 			if err != nil {
 				log.Printf("Error pinging /ping endpoint: %v", err)
 			} else {
-				body, _ := ioutil.ReadAll(resp.Body)
+				body, _ := io.ReadAll(resp.Body)
 				resp.Body.Close()
 				log.Printf("Ping response: %s", string(body))
 			}
 			time.Sleep(5 * time.Minute)
 		}
 	}()
-
+	//Elastic dùng để Index dữ liệu hoặc xóa index
+	services.ConnectElastic()
+	// services.IndexHotelsToES()
+	// services.DeleteIndex("accommodations")
+	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8083"
