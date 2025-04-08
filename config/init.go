@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 	"log"
-	"time"
+	"new/jobs"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -15,7 +15,6 @@ import (
 var RedisClient *redis.Client
 
 func InitApp() (*gin.Engine, *melody.Melody, *cron.Cron, error) {
-
 	router := gin.Default()
 
 	configCors := cors.DefaultConfig()
@@ -41,7 +40,6 @@ func InitApp() (*gin.Engine, *melody.Melody, *cron.Cron, error) {
 }
 
 func initComponents() error {
-
 	if err := LoadEnv(); err != nil {
 		return fmt.Errorf("failed to load .env file: %v", err)
 	}
@@ -61,20 +59,10 @@ func initComponents() error {
 }
 
 func InitCronJobs(c *cron.Cron, m *melody.Melody) error {
-
-	_, err := c.AddFunc("0 0 * * *", func() {
-		now := time.Now()
-		log.Printf("Running UpdateUserAmounts at: %v", now)
-		// if err := services.UpdateUserAmounts(m); err != nil {
-		// 	log.Printf("Error updating user amounts: %v", err)
-		// }
-	})
-	if err != nil {
-		return fmt.Errorf("failed to add cron job: %v", err)
+	// Gọi InitCronJobs từ package jobs
+	if err := jobs.InitCronJobs(c, m); err != nil {
+		return fmt.Errorf("failed to initialize cron jobs: %v", err)
 	}
-
-	c.Start()
-	log.Println("Cron jobs initialized successfully")
 	return nil
 }
 

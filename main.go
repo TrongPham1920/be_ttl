@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"new/config"
@@ -15,6 +16,7 @@ import (
 	"new/services/logger"
 
 	"github.com/joho/godotenv"
+	"github.com/olahol/melody"
 )
 
 func recreateUserTable() {
@@ -38,19 +40,35 @@ func main() {
 	userService := services.NewUserService(services.UserServiceOptions{
 		DB:     config.DB,
 		Logger: logger.NewDefaultLogger(logger.InfoLevel),
-	})
+	}, m)
 	userServiceAdapter := services.NewUserServiceAdapter(userService)
 	jobs.SetUserAmountUpdater(userServiceAdapter)
 
 	recreateUserTable()
+	// Xử lý kết nối WebSocket với Observer Pattern
+	m.HandleConnect(func(s *melody.Session) {
+		userIDStr := s.Request.URL.Query().Get("userID")
+		if userIDStr != "" {
+			userID, _ := strconv.ParseUint(userIDStr, 10, 32)
+			s.Set("userID", userIDStr)
+			userService.RegisterObserver(s, uint(userID))
+		}
+	})
 
-	if err := jobs.InitCronJobs(c, m); err != nil {
+	m.HandleDisconnect(func(s *melody.Session) {
+		userIDStr, exists := s.Get("userID")
+		if exists {
+			userID, _ := strconv.ParseUint(userIDStr.(string), 10, 32)
+			userService.RemoveObserver(s, uint(userID))
+		}
+	})
+	if err := config.InitCronJobs(c, m); err != nil {
 		log.Fatalf("Failed to initialize cron jobs: %v", err)
 	}
 
 	config.InitWebSocket(router, m)
 
-	routes.SetupRoutes(router, config.DB, config.RedisClient, config.Cloudinary, m)
+	routes.SetupRoutes(router, config.DB, config.RedisClient, config.Cloudinary, m, userService)
 
 	go func() {
 		pingURL := "https://backend.trothalo.click/ping"
