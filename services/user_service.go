@@ -238,30 +238,43 @@ func (s *UserService) NotifyAll(c *gin.Context) {
 
 func (s *UserService) NotifyUser(c *gin.Context) {
 	userIDStr := c.Param("userID")
+	fmt.Println("Received userID from request:", userIDStr) // In userID gốc từ URL
+
 	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
+		fmt.Println("Failed to parse userID:", userIDStr, "error:", err)
 		c.JSON(400, gin.H{"error": "invalid userID"})
 		return
 	}
+	fmt.Println("Parsed userID:", userID) // In userID sau khi parse
+
 	var req struct {
 		Message string `json:"message" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Println("Failed to bind JSON for userID", userID, "error:", err)
 		c.JSON(400, gin.H{"error": "message is required"})
 		return
 	}
+	fmt.Println("Received message for userID", userID, ":", req.Message) // In message nhận được
+
 	message := notification.NewMessageBuilder(uint(userID), 0).Build() + " " + req.Message
+	fmt.Println("Constructed message for userID", userID, ":", message) // In message sau khi build
+
 	observers := s.observers[uint(userID)]
 	if len(observers) == 0 {
+		fmt.Println("No observers found for userID:", userID)
 		c.JSON(404, gin.H{"error": "no observers found for user"})
 		return
 	}
+	fmt.Println("Found", len(observers), "observers for userID:", userID) // In số lượng observer
+
 	for _, observer := range observers {
 		if err := observer.Notify(message); err != nil {
-			s.logger.Error("❌ Lỗi gửi thông báo cho user %d: %v", userID, err)
+			fmt.Println("❌ Failed to notify userID", userID, ":", err)
 		}
 	}
-	s.logger.Info("✅ Đã gửi thông báo cho user %d: %s", userID, req.Message)
+	fmt.Println("✅ Successfully sent notification to userID", userID, ":", req.Message)
 	c.JSON(200, gin.H{"message": "Notification sent to user"})
 }
 
