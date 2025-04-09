@@ -29,6 +29,9 @@ const (
 	ErrCodeUpdateFailed    = "UPDATE_FAILED"
 	ErrCodeInvalidRevenue  = "INVALID_REVENUE"
 	ErrCodeInvalidUserID   = "INVALID_USER_ID"
+	ErrCodeInvalidInput    = "INVALID_INPUT"
+	ErrCodeUserNotFound    = "USER_NOT_FOUND"
+	ErrCodeNotifyFailed    = "NOTIFY_FAILED"
 )
 
 type ServiceError struct {
@@ -223,84 +226,117 @@ func (s *UserService) NotifyAll(c *gin.Context) {
 		Message string `json:"message" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, gin.H{"error": "tin nhắn là bắt buộc"})
+		s.logger.Error("❌ Lỗi đầu vào: tin nhắn là bắt buộc: %v", err)
+		c.JSON(400, &ServiceError{
+			Code:    ErrCodeInvalidInput,
+			Message: "Tin nhắn là bắt buộc",
+			Err:     err,
+		})
 		return
 	}
+
 	notificationService := notification.NewMelodyService(s.melody)
 	err := notificationService.SendMessage(req.Message)
 	if err != nil {
 		s.logger.Error("❌ Lỗi gửi thông báo tổng: %v", err)
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.JSON(500, &ServiceError{
+			Code:    ErrCodeNotifyFailed,
+			Message: "Lỗi gửi thông báo tổng",
+			Err:     err,
+		})
 		return
 	}
+
 	s.logger.Info("✅ Đã gửi thông báo tổng: %s", req.Message)
-	c.JSON(200, gin.H{"message": "Broadcast sent"})
+	c.JSON(200, gin.H{
+		"code":    1,
+		"message": "Đã gửi thông báo tổng thành công",
+		"data":    req.Message,
+	})
 }
 
 // NotifyUser với thông báo qua WebSocket và email đồng thời
 func (s *UserService) NotifyUser(c *gin.Context) {
 	userIDStr := c.Param("userID")
-	fmt.Println("Đã nhận userID từ yêu cầu:", userIDStr)
+	s.logger.Info("Đã nhận userID từ yêu cầu: %s", userIDStr)
 
 	userID, err := strconv.ParseUint(userIDStr, 10, 32)
 	if err != nil {
-		fmt.Println("Không phân tích được userID:", userIDStr, "error:", err)
-		c.JSON(400, gin.H{"error": "invalid userID"})
+		s.logger.Error("❌ Không phân tích được userID: %s, lỗi: %v", userIDStr, err)
+		c.JSON(400, &ServiceError{
+			Code:    ErrCodeInvalidUserID,
+			Message: "ID người dùng không hợp lệ",
+			Err:     err,
+		})
 		return
 	}
-	fmt.Println("Parsed userID:", userID)
+	s.logger.Info("Parsed userID: %d", userID)
 
 	var req struct {
 		Message string `json:"message" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Println("Failed to bind JSON for userID", userID, "error:", err)
-		c.JSON(400, gin.H{"error": "message is required"})
+		s.logger.Error("❌ Lỗi đầu vào cho userID %d: tin nhắn là bắt buộc: %v", userID, err)
+		c.JSON(400, &ServiceError{
+			Code:    ErrCodeInvalidInput,
+			Message: "Tin nhắn là bắt buộc",
+			Err:     err,
+		})
 		return
 	}
-	fmt.Println("Đã nhận được tin nhắn cho userID", userID, ":", req.Message)
+	s.logger.Info("Đã nhận được tin nhắn cho userID %d: %s", userID, req.Message)
 
 	message := notification.NewMessageBuilder(uint(userID), 0).Build() + " " + req.Message
-	fmt.Println("Tin nhắn được xây dựng cho userID", userID, ":", message)
+	s.logger.Info("Tin nhắn được xây dựng cho userID %d: %s", userID, message)
 
 	observers := s.observers[uint(userID)]
 	var user models.User
 	// Lấy thông tin user từ DB để lấy email
 	if err := s.db.First(&user, userID).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			fmt.Println("Không tìm thấy người dùng cho userID:", userID)
-			c.JSON(404, gin.H{"error": "không tìm thấy người dùng"})
+			s.logger.Error("❌ Không tìm thấy người dùng cho userID: %d", userID)
+			c.JSON(404, &ServiceError{
+				Code:    ErrCodeUserNotFound,
+				Message: "Không tìm thấy người dùng",
+			})
 			return
 		}
-		fmt.Println("Không thể tìm nạp người dùng cho userID", userID, ":", err)
-		c.JSON(500, gin.H{"error": "không thể lấy được người dùng"})
+		s.logger.Error("❌ Không thể tìm nạp người dùng cho userID %d: %v", userID, err)
+		c.JSON(500, &ServiceError{
+			Code:    ErrCodeUpdateFailed,
+			Message: "Không thể lấy được người dùng",
+			Err:     err,
+		})
 		return
 	}
 
 	// Gửi qua WebSocket nếu có observer
 	if len(observers) > 0 {
-		fmt.Println("Found", len(observers), "người quan sát cho userID:", userID)
+		s.logger.Info("Tìm thấy %d người quan sát cho userID: %d", len(observers), userID)
 		for _, observer := range observers {
 			if err := observer.Notify(message); err != nil {
-				fmt.Println("❌ Không thông báo được userID", userID, ":", err)
+				s.logger.Error("❌ Không thông báo được qua WebSocket cho userID %d: %v", userID, err)
 			}
 		}
-		fmt.Println("✅ Đã gửi thành công thông báo WebSocket tới userID", userID, ":", req.Message)
+		s.logger.Info("✅ Đã gửi thành công thông báo WebSocket tới userID %d: %s", userID, req.Message)
 	} else {
-		fmt.Println("Không tìm thấy người quan sát nào cho userID:", userID)
+		s.logger.Info("Không tìm thấy người quan sát nào cho userID: %d", userID)
 	}
 
 	// Gửi qua email bất kể có observer hay không
 	err = sendNews(user.Email, "Thông báo từ hệ thống", message)
 	if err != nil {
-		fmt.Println("❌ Không gửi được thông báo qua email cho userID", userID, ":", err)
-		// Không trả lỗi ngay, chỉ log vì WebSocket có thể đã thành công
+		s.logger.Error("❌ Không gửi được thông báo qua email cho userID %d: %v", userID, err)
 	} else {
-		fmt.Println("📧 Thông báo qua email đã được gửi đến", user.Email, "for userID:", userID)
+		s.logger.Info("📧 Thông báo qua email đã được gửi đến %s cho userID: %d", user.Email, userID)
 	}
 
-	// Trả về response thành công nếu ít nhất một trong hai phương thức (WebSocket hoặc email) hoạt động
-	c.JSON(200, gin.H{"message": "Thông báo được gửi đến người dùng"})
+	// Trả về response thành công
+	c.JSON(200, gin.H{
+		"code":    1,
+		"message": "Thông báo đã được gửi đến người dùng",
+		"data":    message,
+	})
 }
 
 type UserServiceAdapter struct {
