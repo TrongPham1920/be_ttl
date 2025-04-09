@@ -6,17 +6,15 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
+
 	"net/http"
 	"new/config"
+	"new/dto"
 	"new/models"
 	"os"
-	"strconv"
-	"strings"
-
-	"github.com/gin-gonic/gin"
 )
 
-// Cấu trúc phản hồi từ GPT
 type GPTResponse struct {
 	Choices []struct {
 		Message struct {
@@ -26,196 +24,129 @@ type GPTResponse struct {
 }
 
 type GPTHotelSearchParams struct {
-	Province string   `json:"province"`
-	District string   `json:"district"`
-	MaxPrice int      `json:"maxPrice"`
-	Benefits []string `json:"benefits"`
-	Name     string   `json:"name"`
-	NumTolet int      `json:"numTolet"`
-	NumBed   int      `json:"numBed"`
-	FromDate string   `json:"fromDate"`
-	ToDate   string   `json:"toDate"`
-	Status   int      `json:"status"`
+	Type     *int     `json:"type,omitempty"`
+	Province string   `json:"province,omitempty"`
+	District string   `json:"district,omitempty"`
+	MaxPrice *int     `json:"maxPrice,omitempty"`
+	Benefits []string `json:"benefits,omitempty"`
+	Name     string   `json:"name,omitempty"`
+	NumTolet *int     `json:"numTolet,omitempty"`
+	NumBed   *int     `json:"numBed,omitempty"`
+	FromDate string   `json:"fromDate,omitempty"`
+	ToDate   string   `json:"toDate,omitempty"`
+	Status   *int     `json:"status,omitempty"`
 }
 
-// Hàm gọi API GPT
-func GetGPTResponse(userMessage string) (string, error) {
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		return "", fmt.Errorf("API key không tồn tại")
-	}
-
-	url := "https://api.openai.com/v1/chat/completions"
-	prompt := fmt.Sprintf(`Người dùng đang tìm khách sạn. Trích xuất thông tin từ câu hỏi này:
-    - Địa điểm
-    - Giá tối đa
-    - Tiện ích mong muốn
-    Câu hỏi: "%s"`, userMessage)
-
-	requestBody, _ := json.Marshal(map[string]interface{}{
-		"model": "gpt-4",
-		"messages": []map[string]string{
-			{"role": "system", "content": "Bạn là một trợ lý chuyên trích xuất thông tin tìm kiếm khách sạn."},
-			{"role": "user", "content": prompt},
-		},
-		"max_tokens": 100,
-	})
-
-	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("Lỗi gửi request GPT: %v", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("GPT API lỗi: %s", resp.Status)
-	}
-
-	body, _ := io.ReadAll(resp.Body)
-	fmt.Println("GPT Raw Response:", string(body))
-
-	var gptResponse GPTResponse
-	err = json.Unmarshal(body, &gptResponse)
-	if err != nil {
-		fmt.Println("Lỗi JSON:", err)
-		return "", fmt.Errorf("Lỗi JSON: %v", err)
-	}
-
-	if len(gptResponse.Choices) > 0 {
-		return gptResponse.Choices[0].Message.Content, nil
-	}
-
-	return "", fmt.Errorf("GPT không phản hồi")
-}
-
-func GetHotelSearchParamsFromUserMessage(userMessage string) (map[string]string, error) {
+// =========================
+// GPT REQUEST
+// =========================
+func ExtractSearchFiltersFromGPT(userMessage string) (*dto.SearchFilters, error) {
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		return nil, fmt.Errorf("API key không tồn tại")
 	}
 
 	url := "https://api.openai.com/v1/chat/completions"
-	prompt := fmt.Sprintf(`Người dùng đang tìm khách sạn. Trích xuất thông tin dưới dạng JSON như sau:
-{
-  "province": "tên tỉnh/thành",
-  "district": "tên quận/huyện nếu có",
-  "maxPrice": số_nguyên,
-  "benefits": ["tên tiện ích 1", "tên tiện ích 2"],
-  "name": "tên khách sạn (nếu có)",
-  "numTolet": số phòng tắm (nếu có)",
-  "numBed": số giường (nếu có)",
-  "fromDate": "yyyy-MM-dd" (ngày bắt đầu, nếu có)",
-  "toDate": "yyyy-MM-dd" (ngày kết thúc, nếu có)",
-  "status": số trạng thái (1 = active, 0 = inactive, nếu có)
+	prompt := fmt.Sprintf(`Trích xuất thông tin dưới dạng JSON như sau:
+{	
+  "type": int,
+  "province": "string",
+  "district": "string",
+  "maxPrice": int,
+  "benefits": ["string"],
+  "name": "string",
+  "numTolet": int,
+  "numBed": int,
+  "fromDate": "yyyy-MM-dd",
+  "toDate": "yyyy-MM-dd",
+  "status": int
 }
-Câu hỏi: "%s"`, userMessage)
+  Ghi chú:
+- Nếu người dùng nhập các từ đồng nghĩa với "hotel" hay "khách sạn" thì trả "type": 0, còn đồng nghĩa với "homestay" thì trả "type" : 1, còn đồng nghĩa với "villa" thì trả "type":2
+- Nếu người dùng nhập giá tiền như "400k", "bốn trăm", "4 trăm", "2 triệu", thì hãy tự động chuyển về số nguyên đơn vị đồng (vd: 400000, 2000000).
+- Trường nào không có thì bỏ qua.
+Người dùng: "%s"`, userMessage)
 
 	requestBody, _ := json.Marshal(map[string]interface{}{
 		"model": "gpt-4",
 		"messages": []map[string]string{
-			{"role": "system", "content": "Bạn là trợ lý khách sạn của web Trothalo, chỉ trả về JSON đúng định dạng yêu cầu."},
+			{"role": "system", "content": "Bạn là trợ lý chuyên gợi ý khách sạn. Chỉ trả về đúng JSON."},
 			{"role": "user", "content": prompt},
 		},
-		"max_tokens": 200,
+		"max_tokens": 300,
 	})
 
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("lỗi gửi request GPT: %v", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GPT API lỗi: %s", resp.Status)
-	}
-
 	body, _ := io.ReadAll(resp.Body)
-	fmt.Println("GPT Raw Response:", string(body))
-
-	var gptResponse GPTResponse
-	err = json.Unmarshal(body, &gptResponse)
-	if err != nil || len(gptResponse.Choices) == 0 {
-		return nil, fmt.Errorf("lỗi phân tích JSON: %v", err)
+	fmt.Println("GPT raw response:", string(body))
+	var gptResp GPTResponse
+	if err := json.Unmarshal(body, &gptResp); err != nil || len(gptResp.Choices) == 0 {
+		return nil, fmt.Errorf("GPT trả về lỗi")
 	}
 
-	// Parse nội dung JSON trong GPT content
-	content := gptResponse.Choices[0].Message.Content
-	var extracted GPTHotelSearchParams
-	if err := json.Unmarshal([]byte(content), &extracted); err != nil {
-		return nil, fmt.Errorf("không parse được nội dung GPT: %v", err)
+	var gptData GPTHotelSearchParams
+	if err := json.Unmarshal([]byte(gptResp.Choices[0].Message.Content), &gptData); err != nil {
+		log.Printf("GPT trả JSON nhưng lỗi khi parse: %s\n", gptResp.Choices[0].Message.Content)
+		return nil, fmt.Errorf("không parse JSON GPT: %v", err)
 	}
 
-	// Chuyển thành map[string]string
-	params := map[string]string{}
-	if extracted.Province != "" {
-		params["province"] = extracted.Province
+	layout := "02/01/2006"
+	var fromDate, toDate *time.Time
+
+	if gptData.FromDate != "" {
+		t, err := time.Parse(layout, gptData.FromDate)
+		if err == nil {
+			fromDate = &t
+		}
 	}
-	if extracted.District != "" {
-		params["district"] = extracted.District
+	if gptData.ToDate != "" {
+		t, err := time.Parse(layout, gptData.ToDate)
+		if err == nil {
+			toDate = &t
+		}
 	}
-	if extracted.MaxPrice > 0 {
-		params["price"] = strconv.Itoa(extracted.MaxPrice)
-	}
-	if len(extracted.Benefits) > 0 {
-		params["benefitId"] = MapBenefitNamesToIDs(extracted.Benefits)
+	// Convert sang SearchFilters
+	filters := &dto.SearchFilters{
+		Type:     gptData.Type,
+		Province: gptData.Province,
+		District: gptData.District,
+		Name:     gptData.Name,
+		PriceMax: gptData.MaxPrice,
+		NumTolet: gptData.NumTolet,
+		NumBed:   gptData.NumBed,
+		FromDate: fromDate,
+		ToDate:   toDate,
+		Status:   gptData.Status,
+		Page:     1,
+		Limit:    10,
 	}
 
-	// Bổ sung limit/page mặc định nếu cần
-	params["page"] = "1"
-	params["limit"] = "10"
+	// Mapping benefit names to IDs
+	if len(gptData.Benefits) > 0 {
+		ids := mapBenefitNamesToIDs(gptData.Benefits)
+		filters.BenefitIDs = ids
+	}
 
-	return params, nil
+	return filters, nil
 }
-func MapBenefitNamesToIDs(names []string) string {
-	var benefitIDs []string
 
+func mapBenefitNamesToIDs(names []string) []int {
+	var benefitIDs []int
 	for _, name := range names {
 		var benefit models.Benefit
 		err := config.DB.Where("name ILIKE ?", name).First(&benefit).Error
 		if err == nil {
-			benefitIDs = append(benefitIDs, fmt.Sprintf("%d", benefit.Id))
+			benefitIDs = append(benefitIDs, benefit.Id)
 		}
 	}
-
-	return strings.Join(benefitIDs, ",")
-}
-
-func ChatSearchHandler(c *gin.Context) {
-	var request struct {
-		Message string `json:"message"`
-	}
-	if err := c.ShouldBindJSON(&request); err != nil || request.Message == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Message không hợp lệ"})
-		return
-	}
-
-	// Gọi GPT để trích xuất thông tin
-	params, err := GetHotelSearchParamsFromUserMessage(request.Message)
-	if err != nil {
-		log.Println("Lỗi GPT:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không trích xuất được thông tin từ GPT"})
-		return
-	}
-
-	// Tìm kiếm trong ElasticSearch
-	accommodations,_, err := SearchAccommodationsWithFilters(params)
-	if err != nil {
-		log.Println("Lỗi tìm kiếm Elastic:", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không tìm được kết quả phù hợp"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"results": accommodations,
-	})
+	return benefitIDs
 }
