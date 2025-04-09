@@ -10,16 +10,20 @@ import (
 	"log"
 	"net/http"
 	"new/config"
+	"new/dto"
 	"new/models"
 	"strconv"
+	"time"
+
 	"strings"
 
 	"github.com/elastic/go-elasticsearch/v8"
-	"github.com/elastic/go-elasticsearch/v8/esutil"
+	"github.com/gin-gonic/gin"
 )
 
-var es *elasticsearch.Client
+var Es *elasticsearch.Client
 
+// Kết nối Elastic
 func ConnectElastic() {
 	cfg := elasticsearch.Config{
 		Addresses: []string{
@@ -34,7 +38,7 @@ func ConnectElastic() {
 		},
 	}
 	var err error
-	es, err = elasticsearch.NewClient(cfg)
+	Es, err = elasticsearch.NewClient(cfg)
 	if err != nil {
 		log.Fatal("❌ Không thể kết nối Elasticsearch:", err)
 	}
@@ -42,6 +46,7 @@ func ConnectElastic() {
 	log.Println("🟢 Kết nối Elasticsearch thành công!")
 }
 
+// Hàm tạo data để index vào Elastic
 func GetAllAccommodationsForIndexing() ([]map[string]interface{}, error) {
 	var accommodations []models.Accommodation
 
@@ -99,6 +104,7 @@ func GetAllAccommodationsForIndexing() ([]map[string]interface{}, error) {
 	return formattedAccommodations, nil
 }
 
+// Hàm xử lý Index vào Elastic
 func IndexHotelsToES() error {
 	accommodations, err := GetAllAccommodationsForIndexing()
 	if err != nil {
@@ -126,9 +132,9 @@ func IndexHotelsToES() error {
 	return sendBulkRequest(buf.String())
 }
 
-// Gửi request bulk đến Elasticsearch
+// Hàm hỗ trợ cho IndexHotelsToES gửi request theo bulk đến Elasticsearch (tăng tốc nếu data lớn)
 func sendBulkRequest(data string) error {
-	res, err := es.Bulk(bytes.NewReader([]byte(data)), es.Bulk.WithContext(context.Background()))
+	res, err := Es.Bulk(bytes.NewReader([]byte(data)), Es.Bulk.WithContext(context.Background()))
 	if err != nil {
 		return fmt.Errorf("❌ Lỗi khi gửi Bulk API: %w", err)
 	}
@@ -174,7 +180,7 @@ func sendBulkRequest(data string) error {
 
 // Xóa index trong Elasticsearch
 func DeleteIndex(indexName string) error {
-	res, err := es.Indices.Delete([]string{indexName}, es.Indices.Delete.WithContext(context.Background()))
+	res, err := Es.Indices.Delete([]string{indexName}, Es.Indices.Delete.WithContext(context.Background()))
 	if err != nil {
 		return fmt.Errorf("❌ Lỗi khi xóa index %s: %w", indexName, err)
 	}
@@ -188,257 +194,8 @@ func DeleteIndex(indexName string) error {
 	log.Printf("✅ Index '%s' đã được xóa thành công!", indexName)
 	return nil
 }
-func SearchAccommodations(query string) ([]models.Accommodation, error) {
-	if es == nil {
-		return nil, fmt.Errorf("ElasticSearch client chưa được khởi tạo")
-	}
-	// Tạo truy vấn Elasticsearch
-	searchQuery := map[string]interface{}{
-		"query": map[string]interface{}{
-			"bool": map[string]interface{}{
-				"should": []map[string]interface{}{
-					{"multi_match": map[string]interface{}{
-						"query":     query,
-						"fields":    []string{"name^3", "address^2", "province", "district", "ward", "shortDescription", "description", "benefits_summary"},
-						"fuzziness": "AUTO", // Cho phép tìm kiếm gần đúng
-					}},
-					{"match_phrase_prefix": map[string]interface{}{
-						"name": query, // Hỗ trợ gợi ý tìm kiếm
-					}},
-				},
-				"filter": []map[string]interface{}{
-					{"terms": map[string]interface{}{
-						"type": []int{0, 1, 2}, // 0: Hotel, 1: Homestay, 2: Resort (giả định)
-					}},
-				},
-				"minimum_should_match": 1,
-			},
-		},
-		"sort": []map[string]interface{}{
-			{"_score": "desc"},
-		},
-	}
 
-	// Chuyển thành JSON
-	queryBody, _ := json.Marshal(searchQuery)
-
-	// Gửi request đến Elasticsearch
-	res, err := es.Search(
-		es.Search.WithContext(context.Background()),
-		es.Search.WithIndex("accommodations"),
-		es.Search.WithBody(bytes.NewReader(queryBody)),
-		es.Search.WithPretty(),
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	// Xử lý kết quả trả về
-	var result struct {
-		Hits struct {
-			Hits []struct {
-				Source models.Accommodation `json:"_source"`
-			} `json:"hits"`
-		} `json:"hits"`
-	}
-
-	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
-		return nil, err
-	}
-
-	// Lưu danh sách kết quả
-	var accommodations []models.Accommodation
-	for _, hit := range result.Hits.Hits {
-		accommodations = append(accommodations, hit.Source)
-	}
-
-	return accommodations, nil
-}
-
-func GetUnavailableAccommodationIDs(fromDate, toDate string) ([]uint, error) {
-	var ids []uint
-	err := config.DB.
-		Table("accommodation_statuses").
-		Select("accommodation_id").
-		Where("from_date <= ? AND to_date >= ?", toDate, fromDate).
-		Group("accommodation_id").
-		Pluck("accommodation_id", &ids).Error
-	if err != nil {
-		return nil, err
-	}
-	return ids, nil
-}
-
-func SearchAccommodationsWithFilters(params map[string]string) ([]models.Accommodation, int, error) {
-	filters := BuildFilters(params)
-
-	// Check fromDate & toDate để loại bỏ các accommodation đã được đặt
-	if fromDate, ok := params["fromDate"]; ok && fromDate != "" {
-		if toDate, ok2 := params["toDate"]; ok2 && toDate != "" {
-			unavailableIDs, err := GetUnavailableAccommodationIDs(fromDate, toDate)
-			if err == nil && len(unavailableIDs) > 0 {
-				filters = append(filters, map[string]interface{}{
-					"bool": map[string]interface{}{
-						"must_not": map[string]interface{}{
-							"terms": map[string]interface{}{
-								"id": unavailableIDs,
-							},
-						},
-					},
-				})
-			}
-		}
-	}
-
-	boolQuery := BuildBoolQuery(params["search"], filters)
-	queryBody := BuildESQueryBody(boolQuery, params)
-	return ExecuteESQuery(queryBody)
-}
-
-func BuildFilters(params map[string]string) []map[string]interface{} {
-	filters := []map[string]interface{}{}
-
-	if v := params["type"]; v != "" {
-		filters = append(filters, term("type", v))
-	}
-	if v := params["province"]; v != "" {
-		filters = append(filters, term("province", v))
-	}
-	if v := params["district"]; v != "" {
-		filters = append(filters, term("district", v))
-	}
-	if v := params["status"]; v != "" {
-		filters = append(filters, term("status", v))
-	}
-	if v := params["numBed"]; v != "" {
-		if val, err := strconv.Atoi(v); err == nil {
-			filters = append(filters, rangeGTE("numBed", val))
-		}
-	}
-	if v := params["numTolet"]; v != "" {
-		if val, err := strconv.Atoi(v); err == nil {
-			filters = append(filters, rangeGTE("numTolet", val))
-		}
-	}
-	if v := params["people"]; v != "" {
-		if val, err := strconv.Atoi(v); err == nil {
-			filters = append(filters, rangeGTE("people", val))
-		}
-	}
-	if v := params["benefitId"]; v != "" {
-		benefitIDs := strings.Split(v, ",")
-		filters = append(filters, map[string]interface{}{
-			"terms": map[string]interface{}{"benefitIds": benefitIDs},
-		})
-	}
-
-	return filters
-}
-
-// Build bool query with should + filter
-func BuildBoolQuery(search string, filters []map[string]interface{}) map[string]interface{} {
-	shouldQuery := []map[string]interface{}{}
-	if search != "" {
-		shouldQuery = append(shouldQuery,
-			map[string]interface{}{
-				"multi_match": map[string]interface{}{
-					"query":     search,
-					"fields":    []string{"name^3", "address^2", "province", "district", "ward", "shortDescription", "description", "benefits_summary"},
-					"fuzziness": "AUTO",
-				},
-			},
-			map[string]interface{}{
-				"match_phrase_prefix": map[string]interface{}{
-					"name": search,
-				},
-			},
-		)
-	}
-
-	boolQuery := map[string]interface{}{
-		"should":               shouldQuery,
-		"filter":               filters,
-		"minimum_should_match": 1,
-	}
-
-	return map[string]interface{}{"bool": boolQuery}
-}
-
-// Build full ES query body
-func BuildESQueryBody(query map[string]interface{}, params map[string]string) map[string]interface{} {
-	page, _ := strconv.Atoi(params["page"])
-	limit, _ := strconv.Atoi(params["limit"])
-	if page <= 0 {
-		page = 1
-	}
-	if limit <= 0 {
-		limit = 10
-	}
-	offset := (page - 1) * limit
-
-	return map[string]interface{}{
-		"from":  offset,
-		"size":  limit,
-		"query": query,
-		"sort": []map[string]interface{}{
-			{"_score": "desc"},
-		},
-	}
-}
-
-// Execute ES search
-func ExecuteESQuery(query map[string]interface{}) ([]models.Accommodation, int, error) {
-	var results struct {
-		Hits struct {
-			Total struct {
-				Value int `json:"value"`
-			} `json:"total"`
-			Hits []struct {
-				Source models.Accommodation `json:"_source"`
-			} `json:"hits"`
-		} `json:"hits"`
-	}
-
-	res, err := es.Search(
-		es.Search.WithContext(context.Background()),
-		es.Search.WithIndex("accommodations"),
-		es.Search.WithBody(esutil.NewJSONReader(query)),
-		es.Search.WithTrackTotalHits(true),
-	)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer res.Body.Close()
-
-	if err := json.NewDecoder(res.Body).Decode(&results); err != nil {
-		return nil, 0, err
-	}
-
-	accommodations := make([]models.Accommodation, 0)
-	for _, hit := range results.Hits.Hits {
-		accommodations = append(accommodations, hit.Source)
-	}
-
-	return accommodations, results.Hits.Total.Value, nil
-}
-
-// Helper: term
-func term(field string, value interface{}) map[string]interface{} {
-	return map[string]interface{}{
-		"term": map[string]interface{}{field: value},
-	}
-}
-
-// Helper: range gte
-func rangeGTE(field string, value int) map[string]interface{} {
-	return map[string]interface{}{
-		"range": map[string]interface{}{
-			field: map[string]interface{}{"gte": value},
-		},
-	}
-}
-
+// Hàm cho chức năng AutoComplete
 func AutocompleteAccommodations(keyword string) ([]map[string]interface{}, error) {
 	query := map[string]interface{}{
 		"query": map[string]interface{}{
@@ -457,10 +214,11 @@ func AutocompleteAccommodations(keyword string) ([]map[string]interface{}, error
 		return nil, err
 	}
 
-	res, err := es.Search(
-		es.Search.WithContext(context.Background()),
-		es.Search.WithIndex("accommodations"),
-		es.Search.WithBody(&buf),
+	res, err := Es.Search(
+		Es.Search.WithContext(context.Background()),
+		Es.Search.WithIndex("accommodations"),
+		Es.Search.WithBody(&buf),
+		Es.Search.WithTrackTotalHits(true),
 	)
 	if err != nil {
 		return nil, err
@@ -479,6 +237,7 @@ func AutocompleteAccommodations(keyword string) ([]map[string]interface{}, error
 	return results, nil
 }
 
+// Hàm tìm kiếm trong bán kính 5km
 func NearbyAccommodations(lat, lon float64, radius string) ([]map[string]interface{}, error) {
 	query := map[string]interface{}{
 		"query": map[string]interface{}{
@@ -510,10 +269,10 @@ func NearbyAccommodations(lat, lon float64, radius string) ([]map[string]interfa
 		return nil, err
 	}
 
-	res, err := es.Search(
-		es.Search.WithContext(context.Background()),
-		es.Search.WithIndex("accommodations"),
-		es.Search.WithBody(&buf),
+	res, err := Es.Search(
+		Es.Search.WithContext(context.Background()),
+		Es.Search.WithIndex("accommodations"),
+		Es.Search.WithBody(&buf),
 	)
 	if err != nil {
 		return nil, err
@@ -530,4 +289,249 @@ func NearbyAccommodations(lat, lon float64, radius string) ([]map[string]interfa
 		results = append(results, hit.(map[string]interface{})["_source"].(map[string]interface{}))
 	}
 	return results, nil
+}
+
+// Hàm Parse dữ liệu phục vụ tìm kiếm trong elastic
+func ParseSearchFilters(c *gin.Context) (*dto.SearchFilters, error) {
+	parseIntPtr := func(str string) *int {
+		if str == "" {
+			return nil
+		}
+		if val, err := strconv.Atoi(str); err == nil {
+			return &val
+		}
+		return nil
+	}
+
+	fromDateStr := c.Query("fromDate")
+	toDateStr := c.Query("toDate")
+	var fromDate, toDate *time.Time
+	if fromDateStr != "" && toDateStr != "" {
+		layout := "02/01/2006"
+		fd, err1 := time.Parse(layout, fromDateStr)
+		td, err2 := time.Parse(layout, toDateStr)
+		if err1 == nil && err2 == nil {
+			fromDate, toDate = &fd, &td
+		}
+	}
+
+	// Parse benefits
+	benefitIDs := []int{}
+	raw := c.Query("benefitId")
+	raw = strings.Trim(raw, "[]")
+	for _, s := range strings.Split(raw, ",") {
+		if id, err := strconv.Atoi(strings.TrimSpace(s)); err == nil {
+			benefitIDs = append(benefitIDs, id)
+		}
+	}
+
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "10"))
+	if page < 1 {
+		page = 1
+	}
+
+	return &dto.SearchFilters{
+		Name:       c.Query("name"),
+		Province:   c.Query("province"),
+		District:   c.Query("district"),
+		Ward:       c.Query("ward"),
+		Type:       parseIntPtr(c.Query("type")),
+		Status:     parseIntPtr(c.Query("status")),
+		People:     parseIntPtr(c.Query("people")),
+		NumBed:     parseIntPtr(c.Query("numBed")),
+		NumTolet:   parseIntPtr(c.Query("numTolet")),
+		PriceMin:   parseIntPtr(c.Query("priceMin")),
+		PriceMax:   parseIntPtr(c.Query("priceMax")),
+		BenefitIDs: benefitIDs,
+		FromDate:   fromDate,
+		ToDate:     toDate,
+		Page:       page,
+		Limit:      limit,
+	}, nil
+}
+
+// Hàm xây đựng Query để truy vấn vào Elastic Search
+func BuildESQueryFromFilters(filters *dto.SearchFilters, excludeIDs []uint) map[string]interface{} {
+	must := []map[string]interface{}{}
+
+	if filters.Name != "" {
+		must = append(must, map[string]interface{}{
+			"multi_match": map[string]interface{}{
+				"query":     filters.Name,
+				"fields":    []string{"name^3", "province", "description"},
+				"fuzziness": "AUTO",
+			},
+		})
+	}
+	if filters.Province != "" {
+		must = append(must, map[string]interface{}{
+			"match": map[string]interface{}{
+				"province": filters.Province,
+			},
+		})
+	}
+	if filters.District != "" {
+		must = append(must, map[string]interface{}{
+			"match": map[string]interface{}{
+				"district": filters.District,
+			},
+		})
+	}
+	if filters.Ward != "" {
+		must = append(must, map[string]interface{}{
+			"match": map[string]interface{}{
+				"ward": filters.Ward,
+			},
+		})
+	}
+	if filters.Type != nil {
+		must = append(must, map[string]interface{}{
+			"term": map[string]interface{}{
+				"type": filters.Type,
+			},
+		})
+	}
+	if filters.Status != nil {
+		must = append(must, map[string]interface{}{
+			"term": map[string]interface{}{
+				"status": *filters.Status,
+			},
+		})
+	}
+	if filters.People != nil {
+		must = append(must, map[string]interface{}{
+			"range": map[string]interface{}{
+				"people": map[string]interface{}{"gte": *filters.People},
+			},
+		})
+	}
+	if filters.NumBed != nil {
+		must = append(must, map[string]interface{}{
+			"range": map[string]interface{}{
+				"numBed": map[string]interface{}{"gte": *filters.NumBed},
+			},
+		})
+	}
+	if filters.NumTolet != nil {
+		must = append(must, map[string]interface{}{
+			"range": map[string]interface{}{
+				"numTolet": map[string]interface{}{"gte": *filters.NumTolet},
+			},
+		})
+	}
+	if filters.PriceMin != nil || filters.PriceMax != nil {
+		priceRange := map[string]interface{}{}
+		if filters.PriceMin != nil {
+			priceRange["gte"] = *filters.PriceMin
+		}
+		if filters.PriceMax != nil {
+			priceRange["lte"] = *filters.PriceMax
+		}
+		must = append(must, map[string]interface{}{
+			"range": map[string]interface{}{
+				"price": priceRange,
+			},
+		})
+	}
+	if len(filters.BenefitIDs) > 0 {
+		terms := make([]interface{}, len(filters.BenefitIDs))
+		for i, id := range filters.BenefitIDs {
+			terms[i] = id
+		}
+		must = append(must, map[string]interface{}{
+			"terms": map[string]interface{}{
+				"benefits.id": terms,
+			},
+		})
+	}
+
+	boolQuery := map[string]interface{}{"must": must}
+	if len(excludeIDs) > 0 {
+		boolQuery["must_not"] = []map[string]interface{}{
+			{
+				"terms": map[string]interface{}{
+					"id": excludeIDs,
+				},
+			},
+		}
+	}
+
+	return map[string]interface{}{
+		"from": (filters.Page - 1) * filters.Limit,
+		"size": filters.Limit,
+		"query": map[string]interface{}{
+			"bool": boolQuery,
+		},
+		"sort": []map[string]interface{}{
+			{"id": map[string]string{"order": "desc"}},
+		},
+	}
+}
+
+// Hàm tìm kiếm trong Elastic
+func SearchElastic(es *elasticsearch.Client, query map[string]interface{}, index string) ([]dto.AccommodationResponse, int, error) {
+	var buf bytes.Buffer
+
+	// Encode truy vấn JSON vào buffer
+	if err := json.NewEncoder(&buf).Encode(query); err != nil {
+		return nil, 0, fmt.Errorf("lỗi encode query: %w", err)
+	}
+
+	// Gửi request đến ElasticSearch
+	res, err := es.Search(
+		es.Search.WithContext(context.Background()),
+		es.Search.WithIndex(index),
+		es.Search.WithBody(&buf),
+		es.Search.WithTrackTotalHits(true),
+	)
+	if err != nil {
+		return nil, 0, fmt.Errorf("lỗi khi gọi elasticsearch: %w", err)
+	}
+	defer res.Body.Close()
+
+	// Kiểm tra lỗi response
+	if res.IsError() {
+		return nil, 0, fmt.Errorf("lỗi response từ elasticsearch: %s", res.String())
+	}
+
+	// Decode response JSON
+	var r map[string]interface{}
+	if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
+		return nil, 0, fmt.Errorf("lỗi decode response: %w", err)
+	}
+
+	// Lấy danh sách kết quả
+	hitsRaw, ok := r["hits"].(map[string]interface{})["hits"].([]interface{})
+	if !ok {
+		return nil, 0, fmt.Errorf("lỗi parsing hits")
+	}
+
+	// Lấy tổng số kết quả
+	total := int(r["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64))
+
+	results := make([]dto.AccommodationResponse, 0)
+
+	// Convert từng item
+	for _, hit := range hitsRaw {
+		source, ok := hit.(map[string]interface{})["_source"].(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Dùng json để convert sang struct
+		data, err := json.Marshal(source)
+		if err != nil {
+			continue
+		}
+
+		var item dto.AccommodationResponse
+		if err := json.Unmarshal(data, &item); err != nil {
+			continue
+		}
+
+		results = append(results, item)
+	}
+
+	return results, total, nil
 }
