@@ -535,3 +535,6 @@ func SearchElastic(es *elasticsearch.Client, query map[string]interface{}, index
 
 	return results, total, nil
 }
+
+
+

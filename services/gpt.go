@@ -62,6 +62,7 @@ func ExtractSearchFiltersFromGPT(userMessage string) (*dto.SearchFilters, error)
   "status": int
 }
   Ghi chú:
+- Nếu người dùng có nhập từ khóa "gần biển" hoặc tương tự thì cung cấp các province có giáp biển ở Việt Nam như Vũng Tàu, Nha Trang, Đà Nẵng.
 - Nếu người dùng nhập các từ đồng nghĩa với "hotel" hay "khách sạn" thì trả "type": 0, còn đồng nghĩa với "homestay" thì trả "type" : 1, còn đồng nghĩa với "villa" thì trả "type":2
 - Nếu người dùng nhập giá tiền như "400k", "bốn trăm", "4 trăm", "2 triệu", thì hãy tự động chuyển về số nguyên đơn vị đồng (vd: 400000, 2000000).
 - Trường nào không có thì bỏ qua.
