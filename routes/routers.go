@@ -7,18 +7,17 @@ import (
 	"new/config"
 	"new/controllers"
 	middlewares "new/middleware"
-
-	"github.com/gin-gonic/gin"
-	"github.com/olahol/melody"
-
-	"github.com/redis/go-redis/v9"
+	"new/services" // Thêm import package services
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
+	"github.com/gin-gonic/gin"
+	"github.com/olahol/melody"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
-func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *cloudinary.Cloudinary, m *melody.Melody) {
+func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *cloudinary.Cloudinary, m *melody.Melody, userService *services.UserService) {
 
 	userController := controllers.NewUserController(db, redisCli)
 
@@ -113,14 +112,14 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *c
 	v1.POST("/sendpay", controllers.SendPay)
 	v1.PUT("/paymentStatus", controllers.UpdatePaymentStatus)
 
-	//doanh thu
+	// Doanh thu
 	v1.GET("/revenue", controllers.GetTotalRevenue)
 	v1.GET("/revenue/detail", controllers.GetTotal)
 	v1.GET("/today", controllers.GetToday)
 	v1.GET("/todayUser", middlewares.AuthMiddleware(1), controllers.GetTodayUser)
 	v1.GET("/userRevenue", middlewares.AuthMiddleware(1), controllers.GetUserRevene)
 
-	//Đơn rút tiền
+	// Đơn rút tiền
 	v1.POST("/createWithdrawalHistory", controllers.CreateWithdrawalHistory)
 	v1.GET("/getWithdrawalHistory", controllers.GetWithdrawalHistory)
 	v1.POST("/confirmWithdrawalHistory", controllers.ConfirmWithdrawalHistory)
@@ -187,12 +186,13 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *c
 		})
 	})
 
-	//ws
+	// WebSocket routes
 	v1.GET("/test-broadcast", func(c *gin.Context) {
 		message := []byte("Thông báo từ backend: Tin nhắn mới!")
 		fmt.Println("Broadcasting message:", string(message))
 		m.Broadcast(message)
 		c.String(200, "Broadcast message sent!")
 	})
-
+	v1.POST("/notify/all", userService.NotifyAll)
+	v1.POST("/notify/user/:userID", userService.NotifyUser)
 }

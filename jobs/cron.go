@@ -26,13 +26,13 @@ func InitCronJobs(c *cron.Cron, m *melody.Melody) error {
 	_, err := c.AddFunc("0 0 * * *", func() {
 		now := time.Now()
 		log.Printf("Đang chạy cập nhật số tiền cho người dùng lúc: %v", now)
-		// if userAmountUpdater == nil {
-		// 	log.Printf("Lỗi: UserAmountUpdater chưa được thiết lập")
-		// 	return
-		// }
-		// if err := userAmountUpdater.UpdateUserAmounts(m); err != nil {
-		// 	log.Printf("Lỗi khi cập nhật số tiền cho người dùng: %v", err)
-		// }
+		if userAmountUpdater == nil {
+			log.Printf("Lỗi: UserAmountUpdater chưa được thiết lập")
+			return
+		}
+		if err := userAmountUpdater.UpdateUserAmounts(m); err != nil {
+			log.Printf("Lỗi khi cập nhật số tiền cho người dùng: %v", err)
+		}
 	})
 	if err != nil {
 		return err
