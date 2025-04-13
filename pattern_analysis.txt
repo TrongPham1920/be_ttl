@@ -69,16 +69,7 @@
     * sendcodeEmail() - Template gửi mã code
     * sendUserEmail() - Template gửi email user
 
-## 9. Chain of Responsibility Pattern
-- Mục đích: Xử lý request theo chuỗi
-- Vị trí áp dụng:
-  + `middleware/auth.go`:
-    * AuthMiddleware - Xác thực
-    * RoleMiddleware - Phân quyền
-  + `middleware/logging.go`:
-    * LoggingMiddleware - Ghi log
-
-## 10. Command Pattern
+## 9. Command Pattern
 - Mục đích: Đóng gói request
 - Vị trí áp dụng:
   + `controllers/user_controller.go`:
@@ -86,14 +77,14 @@
   + `controllers/auth_controller.go`:
     * AuthController - Xử lý request auth
 
-## 11. State Pattern
+## 10. State Pattern
 - Mục đích: Quản lý trạng thái
 - Vị trí áp dụng:
   + `models/user.go`:
     * UserStatus - Trạng thái user
     * UserRole - Vai trò user
 
-## 12. Proxy Pattern
+## 11. Proxy Pattern
 - Mục đích: Kiểm soát truy cập
 - Vị trí áp dụng:
   + `services/redis_service.go`:
@@ -101,7 +92,7 @@
   + `middleware/auth.go`:
     * AuthProxy - Kiểm soát truy cập
 
-## 13. Decorator Pattern
+## 12. Decorator Pattern
 - Mục đích: Thêm chức năng
 - Vị trí áp dụng:
   + `middleware/auth.go`:
@@ -109,7 +100,7 @@
   + `middleware/logging.go`:
     * LoggingDecorator - Thêm logging
 
-## 14. Facade Pattern
+## 13. Facade Pattern
 - Mục đích: Đơn giản hóa interface
 - Vị trí áp dụng:
   + `config/init.go`:
