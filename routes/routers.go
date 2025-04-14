@@ -69,7 +69,9 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *c
 	v1.GET("/checkAcc", controllers.GetAccBookingDates)
 	v1.GET("/accommodationReceptionist", controllers.GetAccommodationReceptionist)
 	v1.GET("/elastic", controllers.SearchAccommodations)
+	v1.GET("/advanced_search", controllers.AdvancedSearchAccommodations)
 	v1.POST("/chat", controllers.ChatSearchHandler)
+	// v1.GET("/chat_history/:id", controllers.GetChatHistory)
 	v1.GET("/nearby", controllers.SearchNear)
 
 	v1.GET("/banks", controllers.GetAllBanks)
