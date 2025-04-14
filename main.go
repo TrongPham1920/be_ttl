@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,7 +9,6 @@ import (
 	"time"
 
 	"new/config"
-	"new/models"
 
 	"new/jobs"
 	"new/routes"
