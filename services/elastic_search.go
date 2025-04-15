@@ -47,61 +47,72 @@ func ConnectElastic() {
 }
 
 // Hàm tạo data để index vào Elastic
-func GetAllAccommodationsForIndexing() ([]map[string]interface{}, error) {
+// func GetAllAccommodationsForIndexing() ([]map[string]interface{}, error) {
+// 	var accommodations []models.Accommodation
+
+// 	err := config.DB.Preload("Benefits").Preload("Rooms").Preload("User").Preload("AccommodationStatuses").Find(&accommodations).Error
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	var formattedAccommodations []map[string]interface{}
+
+// 	for _, acc := range accommodations {
+// 		// Danh sách lợi ích theo format [{id, name}]
+// 		var benefits []map[string]interface{}
+// 		for _, b := range acc.Benefits {
+// 			benefits = append(benefits, map[string]interface{}{
+// 				"id":   b.Id,
+// 				"name": b.Name,
+// 			})
+// 		}
+
+// 		// User object
+// 		user := map[string]interface{}{
+// 			"id":          acc.User.ID,
+// 			"name":        acc.User.Name,
+// 			"email":       acc.User.Email,
+// 			"phoneNumber": acc.User.PhoneNumber,
+// 		}
+
+// 		accData := map[string]interface{}{
+// 			"id":               acc.ID,
+// 			"type":             acc.Type,
+// 			"province":         acc.Province,
+// 			"name":             acc.Name,
+// 			"address":          acc.Address,
+// 			"avatar":           acc.Avatar,
+// 			"shortDescription": acc.ShortDescription,
+// 			"description":      acc.Description,
+// 			"status":           acc.Status,
+// 			"num":              acc.Num,
+// 			"people":           acc.People,
+// 			"price":            acc.Price,
+// 			"numBed":           acc.NumBed,
+// 			"numTolet":         acc.NumTolet,
+// 			"district":         acc.District,
+// 			"ward":             acc.Ward,
+// 			"longitude":        acc.Longitude,
+// 			"latitude":         acc.Latitude,
+// 			"benefits":         benefits,
+// 			"user":             user,
+// 		}
+
+// 		formattedAccommodations = append(formattedAccommodations, accData)
+// 	}
+
+// 	return formattedAccommodations, nil
+// }
+
+func GetAllAccommodationsForIndexing() ([]models.Accommodation, error) {
 	var accommodations []models.Accommodation
 
-	err := config.DB.Preload("Benefits").Preload("Rooms").Preload("User").Preload("AccommodationStatuses").Find(&accommodations).Error
+	err := config.DB.Find(&accommodations).Error
 	if err != nil {
 		return nil, err
 	}
 
-	var formattedAccommodations []map[string]interface{}
-
-	for _, acc := range accommodations {
-		// Danh sách lợi ích theo format [{id, name}]
-		var benefits []map[string]interface{}
-		for _, b := range acc.Benefits {
-			benefits = append(benefits, map[string]interface{}{
-				"id":   b.Id,
-				"name": b.Name,
-			})
-		}
-
-		// User object
-		user := map[string]interface{}{
-			"id":          acc.User.ID,
-			"name":        acc.User.Name,
-			"email":       acc.User.Email,
-			"phoneNumber": acc.User.PhoneNumber,
-		}
-
-		accData := map[string]interface{}{
-			"id":               acc.ID,
-			"type":             acc.Type,
-			"province":         acc.Province,
-			"name":             acc.Name,
-			"address":          acc.Address,
-			"avatar":           acc.Avatar,
-			"shortDescription": acc.ShortDescription,
-			"description":      acc.Description,
-			"status":           acc.Status,
-			"num":              acc.Num,
-			"people":           acc.People,
-			"price":            acc.Price,
-			"numBed":           acc.NumBed,
-			"numTolet":         acc.NumTolet,
-			"district":         acc.District,
-			"ward":             acc.Ward,
-			"longitude":        acc.Longitude,
-			"latitude":         acc.Latitude,
-			"benefits":         benefits,
-			"user":             user,
-		}
-
-		formattedAccommodations = append(formattedAccommodations, accData)
-	}
-
-	return formattedAccommodations, nil
+	return accommodations, nil
 }
 
 // Hàm xử lý Index vào Elastic
@@ -114,16 +125,16 @@ func IndexHotelsToES() error {
 	var buf strings.Builder
 	for _, acc := range accommodations {
 		// Ép kiểu id an toàn
-		id := fmt.Sprintf("%v", acc["id"])
+		id := fmt.Sprintf("%v", acc.ID)
 
 		// Ghi metadata Bulk
-		meta := fmt.Sprintf(`{ "index" : { "_index" : "accommodations", "_id" : "%s" } }`, id)
+		meta := fmt.Sprintf(`{ "index" : { "_index" : "accommodations_test", "_id" : "%s" } }`, id)
 		buf.WriteString(meta + "\n")
 
 		// Chuyển acc thành JSON
 		hotelJSON, err := json.Marshal(acc)
 		if err != nil {
-			log.Printf("❌ Lỗi khi convert accommodation thành JSON: %v\n", err)
+			log.Printf(" Lỗi khi convert accommodation thành JSON: %v\n", err)
 			continue
 		}
 		buf.WriteString(string(hotelJSON) + "\n")
@@ -357,10 +368,11 @@ func BuildESQueryFromFilters(filters *dto.SearchFilters, excludeIDs []uint) map[
 
 	if filters.Name != "" {
 		must = append(must, map[string]interface{}{
-			"multi_match": map[string]interface{}{
-				"query":     filters.Name,
-				"fields":    []string{"name^3", "province", "description"},
-				"fuzziness": "AUTO",
+			"match": map[string]interface{}{
+				"name.raw": map[string]interface{}{
+					"query":     filters.Name,
+					"fuzziness": "AUTO",
+				},
 			},
 		})
 	}
@@ -535,6 +547,3 @@ func SearchElastic(es *elasticsearch.Client, query map[string]interface{}, index
 
 	return results, total, nil
 }
-
-
-

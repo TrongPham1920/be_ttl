@@ -152,10 +152,12 @@ func main() {
 			time.Sleep(5 * time.Minute)
 		}
 	}()
+
 	//Elastic dùng để Index dữ liệu hoặc xóa index
 	services.ConnectElastic()
 	// services.IndexHotelsToES()
 	// services.DeleteIndex("accommodations")
+
 	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -12,6 +12,7 @@ type SearchFilters struct {
 	Type       *int
 	Status     *int
 	People     *int
+	Nums       *int
 	NumBed     *int
 	NumTolet   *int
 	PriceMin   *int
