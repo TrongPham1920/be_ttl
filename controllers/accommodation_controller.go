@@ -30,7 +30,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func getAllAccommodationStatuses(c *gin.Context, fromDate, toDate time.Time) ([]models.AccommodationStatus, error) {
+func GetAllAccommodationStatuses(c *gin.Context, fromDate, toDate time.Time) ([]models.AccommodationStatus, error) {
 	var statuses []models.AccommodationStatus
 
 	// Tạo cache key
@@ -800,7 +800,7 @@ func GetAllAccommodationsForUser(c *gin.Context) {
 		}
 	}
 
-	statuses, err := getAllAccommodationStatuses(c, fromDate, toDate)
+	statuses, err := GetAllAccommodationStatuses(c, fromDate, toDate)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "mess": "Không thể lấy trạng thái của accommodation"})
 		return
@@ -1586,7 +1586,7 @@ func SearchAccommodations(c *gin.Context) {
 
 	excludeIDs := []uint{}
 	if filters.FromDate != nil && filters.ToDate != nil {
-		statuses, err := getAllAccommodationStatuses(c, *filters.FromDate, *filters.ToDate)
+		statuses, err := GetAllAccommodationStatuses(c, *filters.FromDate, *filters.ToDate)
 		if err == nil {
 			for _, status := range statuses {
 				excludeIDs = append(excludeIDs, status.AccommodationID)
@@ -1607,16 +1607,13 @@ func SearchAccommodations(c *gin.Context) {
 
 // Hàm tìm kiếm nâng cao
 func AdvancedSearchAccommodations(c *gin.Context) {
-	var req struct {
-		Search string `json:"search"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil || req.Search == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "message không hợp lệ"})
+	search := c.Query("search")
+	if search == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Thiếu tham số search"})
 		return
 	}
-
 	// Gọi GPT để phân tích câu hỏi
-	filters, err := services.ExtractSearchFiltersFromGPT(req.Search)
+	filters, err := services.ExtractSearchFiltersFromGPT(search)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Không phân tích được câu hỏi"})
 		return
@@ -1625,7 +1622,7 @@ func AdvancedSearchAccommodations(c *gin.Context) {
 	// Lọc các chỗ đã đặt nếu có from/to date
 	excludeIDs := []uint{}
 	if filters.FromDate != nil && filters.ToDate != nil {
-		statuses, err := getAllAccommodationStatuses(c, *filters.FromDate, *filters.ToDate)
+		statuses, err := GetAllAccommodationStatuses(c, *filters.FromDate, *filters.ToDate)
 		if err == nil {
 			for _, status := range statuses {
 				excludeIDs = append(excludeIDs, status.AccommodationID)
@@ -1641,8 +1638,5 @@ func AdvancedSearchAccommodations(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"results": results,
-		"total":   total,
-	})
+	response.SuccessWithTotal(c, results, total)
 }
