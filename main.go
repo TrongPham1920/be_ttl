@@ -1,22 +1,16 @@
 package main
 
 import (
-	"io"
 	"log"
-	"net/http"
 	"os"
 	"strconv"
-	"time"
 
 	"new/config"
 
-	"new/jobs"
 	"new/routes"
 	"new/services"
 	"new/services/logger"
 
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"github.com/olahol/melody"
 )
 
@@ -92,11 +86,7 @@ func recreateUserTable() {
 
 func main() {
 
-	if err := godotenv.Load(); err != nil {
-		log.Printf("Warning: không load được file .env, sử dụng biến môi trường có sẵn: %v", err)
-	}
-
-	router, m, c, err := config.InitApp()
+	router, m, err := config.InitApp()
 	if err != nil {
 		log.Fatalf("Failed to initialize app: %v", err)
 	}
@@ -105,10 +95,9 @@ func main() {
 		DB:     config.DB,
 		Logger: logger.NewDefaultLogger(logger.InfoLevel),
 	}, m)
-	userServiceAdapter := services.NewUserServiceAdapter(userService)
-	jobs.SetUserAmountUpdater(userServiceAdapter)
 
 	// recreateUserTable()
+
 	// Xử lý kết nối WebSocket với Observer Pattern
 	m.HandleConnect(func(s *melody.Session) {
 		userIDStr := s.Request.URL.Query().Get("userID")
@@ -126,32 +115,29 @@ func main() {
 			userService.RemoveObserver(s, uint(userID))
 		}
 	})
-	if err := config.InitCronJobs(c, m); err != nil {
-		log.Fatalf("Failed to initialize cron jobs: %v", err)
-	}
 
 	config.InitWebSocket(router, m)
 
 	routes.SetupRoutes(router, config.DB, config.RedisClient, config.Cloudinary, m, userService)
 
-	router.GET("/ping", func(c *gin.Context) {
-		c.String(http.StatusOK, "pong")
-	})
+	// router.GET("/ping", func(c *gin.Context) {
+	// 	c.String(http.StatusOK, "pong")
+	// })
 
-	go func() {
-		pingURL := "https://backend.trothalo.click/ping"
-		for {
-			resp, err := http.Get(pingURL)
-			if err != nil {
-				log.Printf("Error pinging /ping endpoint: %v", err)
-			} else {
-				body, _ := io.ReadAll(resp.Body)
-				resp.Body.Close()
-				log.Printf("Ping response: %s", string(body))
-			}
-			time.Sleep(5 * time.Minute)
-		}
-	}()
+	// go func() {
+	// 	pingURL := "https://be.trothalo.click/ping"
+	// 	for {
+	// 		resp, err := http.Get(pingURL)
+	// 		if err != nil {
+	// 			log.Printf("Error pinging /ping endpoint: %v", err)
+	// 		} else {
+	// 			body, _ := io.ReadAll(resp.Body)
+	// 			resp.Body.Close()
+	// 			log.Printf("Ping response: %s", string(body))
+	// 		}
+	// 		time.Sleep(5 * time.Minute)
+	// 	}
+	// }()
 
 	//Elastic dùng để Index dữ liệu hoặc xóa index
 	services.ConnectElastic()
