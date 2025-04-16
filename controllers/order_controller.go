@@ -639,6 +639,12 @@ func ChangeOrderStatus(c *gin.Context) {
 						response.ServerError(c)
 						return
 					}
+					if err := config.DB.Model(&models.User{}).
+						Where("id = ?", invoice.AdminID).
+						UpdateColumn("amount", gorm.Expr("amount - ?", invoice.TotalAmount*0.7)).Error; err != nil {
+						response.ServerError(c)
+						return
+					}
 				} else {
 					response.NotFound(c)
 					return
@@ -703,10 +709,16 @@ func ChangeOrderStatus(c *gin.Context) {
 				newUserRevenue := models.UserRevenue{
 					UserID:     invoice.AdminID,
 					Date:       today,
-					Revenue:    invoice.TotalAmount,
+					Revenue:    invoice.TotalAmount * 0.7,
 					OrderCount: 1,
 				}
 				if err := config.DB.Create(&newUserRevenue).Error; err != nil {
+					response.ServerError(c)
+					return
+				}
+				if err := config.DB.Model(&models.User{}).
+					Where("id = ?", invoice.AdminID).
+					UpdateColumn("amount", gorm.Expr("amount + ?", invoice.TotalAmount*0.7)).Error; err != nil {
 					response.ServerError(c)
 					return
 				}
@@ -715,11 +727,17 @@ func ChangeOrderStatus(c *gin.Context) {
 				return
 			}
 		} else {
-
 			if err := config.DB.Model(&userRevenue).Updates(map[string]interface{}{
-				"revenue":     userRevenue.Revenue + invoice.TotalAmount,
+				"revenue":     userRevenue.Revenue + invoice.TotalAmount*0.7,
 				"order_count": userRevenue.OrderCount + 1,
 			}).Error; err != nil {
+				response.ServerError(c)
+				return
+			}
+
+			if err := config.DB.Model(&models.User{}).
+				Where("id = ?", invoice.AdminID).
+				UpdateColumn("amount", gorm.Expr("amount + ?", invoice.TotalAmount*0.7)).Error; err != nil {
 				response.ServerError(c)
 				return
 			}

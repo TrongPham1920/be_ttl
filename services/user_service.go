@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 	_ "time/tzdata"
 
+	"new/config"
 	"new/models"
 	"new/services/logger"
 	"new/services/notification"
@@ -350,4 +352,54 @@ func NewUserServiceAdapter(service *UserService) *UserServiceAdapter {
 func (a *UserServiceAdapter) UpdateUserAmounts(m *melody.Melody) error {
 	notificationService := notification.NewMelodyService(m)
 	return a.service.UpdateUserAmounts(context.Background(), notificationService)
+}
+
+func UpdateDailyRevenue() error {
+	query := `
+		INSERT INTO user_revenues (user_id, date, revenue, order_count, created_at, updated_at)
+		SELECT 
+			invoices.admin_id AS user_id,
+			DATE(orders.created_at) AS date,
+			SUM(invoices.total_amount) AS revenue,
+			COUNT(invoices.id) AS order_count,
+			NOW() AS created_at,
+			NOW() AS updated_at
+		FROM invoices
+		JOIN orders ON invoices.order_id = orders.id
+		GROUP BY invoices.admin_id, DATE(orders.created_at)
+		ON CONFLICT (user_id, date)
+		DO UPDATE SET 
+			revenue = EXCLUDED.revenue,
+			order_count = EXCLUDED.order_count,
+			updated_at = NOW();
+	`
+
+	if err := config.DB.Exec(query).Error; err != nil {
+		log.Printf("Lỗi cập nhật doanh thu hàng ngày: %v", err)
+		return fmt.Errorf("updateDailyRevenue error: %w", err)
+	}
+
+	log.Printf("Cập nhật doanh thu hàng ngày thành công lúc %v", time.Now())
+	return nil
+}
+
+func UpdateUserTotalAmount() error {
+	query := `
+		UPDATE users
+		SET amount = COALESCE(agg.total_revenue, 0)
+		FROM (
+			SELECT user_id, SUM(revenue) AS total_revenue
+			FROM user_revenues
+			GROUP BY user_id
+		) AS agg
+		WHERE users.id = agg.user_id;
+	`
+
+	if err := config.DB.Exec(query).Error; err != nil {
+		log.Printf("Lỗi cập nhật tổng doanh thu cho user: %v", err)
+		return fmt.Errorf("updateUserTotalAmount error: %w", err)
+	}
+
+	log.Println("Cập nhật tổng doanh thu thành công")
+	return nil
 }

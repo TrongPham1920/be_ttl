@@ -27,12 +27,6 @@ func getDBConfigByEnv(env string) string {
 		host = os.Getenv("QC_DB_HOST")
 		port = os.Getenv("QC_DB_PORT")
 		name = os.Getenv("QC_DB_NAME")
-	case "prod":
-		user = os.Getenv("PROD_DB_USER")
-		password = os.Getenv("PROD_DB_PASSWORD")
-		host = os.Getenv("PROD_DB_HOST")
-		port = os.Getenv("PROD_DB_PORT")
-		name = os.Getenv("PROD_DB_NAME")
 	default:
 		log.Fatalf("Unknown environment: %s", env)
 	}

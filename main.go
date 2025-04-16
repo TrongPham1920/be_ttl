@@ -11,6 +11,7 @@ import (
 	"new/services"
 	"new/services/logger"
 
+	"github.com/joho/godotenv"
 	"github.com/olahol/melody"
 )
 
@@ -85,6 +86,9 @@ func recreateUserTable() {
 }
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Không load được file .env: %v", err)
+	}
 
 	router, m, err := config.InitApp()
 	if err != nil {
