@@ -47,72 +47,61 @@ func ConnectElastic() {
 }
 
 // Hàm tạo data để index vào Elastic
-// func GetAllAccommodationsForIndexing() ([]map[string]interface{}, error) {
-// 	var accommodations []models.Accommodation
-
-// 	err := config.DB.Preload("Benefits").Preload("Rooms").Preload("User").Preload("AccommodationStatuses").Find(&accommodations).Error
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	var formattedAccommodations []map[string]interface{}
-
-// 	for _, acc := range accommodations {
-// 		// Danh sách lợi ích theo format [{id, name}]
-// 		var benefits []map[string]interface{}
-// 		for _, b := range acc.Benefits {
-// 			benefits = append(benefits, map[string]interface{}{
-// 				"id":   b.Id,
-// 				"name": b.Name,
-// 			})
-// 		}
-
-// 		// User object
-// 		user := map[string]interface{}{
-// 			"id":          acc.User.ID,
-// 			"name":        acc.User.Name,
-// 			"email":       acc.User.Email,
-// 			"phoneNumber": acc.User.PhoneNumber,
-// 		}
-
-// 		accData := map[string]interface{}{
-// 			"id":               acc.ID,
-// 			"type":             acc.Type,
-// 			"province":         acc.Province,
-// 			"name":             acc.Name,
-// 			"address":          acc.Address,
-// 			"avatar":           acc.Avatar,
-// 			"shortDescription": acc.ShortDescription,
-// 			"description":      acc.Description,
-// 			"status":           acc.Status,
-// 			"num":              acc.Num,
-// 			"people":           acc.People,
-// 			"price":            acc.Price,
-// 			"numBed":           acc.NumBed,
-// 			"numTolet":         acc.NumTolet,
-// 			"district":         acc.District,
-// 			"ward":             acc.Ward,
-// 			"longitude":        acc.Longitude,
-// 			"latitude":         acc.Latitude,
-// 			"benefits":         benefits,
-// 			"user":             user,
-// 		}
-
-// 		formattedAccommodations = append(formattedAccommodations, accData)
-// 	}
-
-// 	return formattedAccommodations, nil
-// }
-
-func GetAllAccommodationsForIndexing() ([]models.Accommodation, error) {
+func GetAllAccommodationsForIndexing() ([]map[string]interface{}, error) {
 	var accommodations []models.Accommodation
 
-	err := config.DB.Find(&accommodations).Error
+	err := config.DB.Preload("Benefits").Preload("Rooms").Preload("User").Preload("AccommodationStatuses").Find(&accommodations).Error
 	if err != nil {
 		return nil, err
 	}
 
-	return accommodations, nil
+	var formattedAccommodations []map[string]interface{}
+
+	for _, acc := range accommodations {
+		// Danh sách lợi ích theo format [{id, name}]
+		var benefits []map[string]interface{}
+		for _, b := range acc.Benefits {
+			benefits = append(benefits, map[string]interface{}{
+				"id":   b.Id,
+				"name": b.Name,
+			})
+		}
+
+		// User object
+		user := map[string]interface{}{
+			"id":          acc.User.ID,
+			"name":        acc.User.Name,
+			"email":       acc.User.Email,
+			"phoneNumber": acc.User.PhoneNumber,
+		}
+
+		accData := map[string]interface{}{
+			"id":               acc.ID,
+			"type":             acc.Type,
+			"province":         acc.Province,
+			"name":             acc.Name,
+			"address":          acc.Address,
+			"avatar":           acc.Avatar,
+			"shortDescription": acc.ShortDescription,
+			"description":      acc.Description,
+			"status":           acc.Status,
+			"num":              acc.Num,
+			"people":           acc.People,
+			"price":            acc.Price,
+			"numBed":           acc.NumBed,
+			"numTolet":         acc.NumTolet,
+			"district":         acc.District,
+			"ward":             acc.Ward,
+			"longitude":        acc.Longitude,
+			"latitude":         acc.Latitude,
+			"benefits":         benefits,
+			"user":             user,
+		}
+
+		formattedAccommodations = append(formattedAccommodations, accData)
+	}
+
+	return formattedAccommodations, nil
 }
 
 // Hàm xử lý Index vào Elastic
@@ -125,7 +114,7 @@ func IndexHotelsToES() error {
 	var buf strings.Builder
 	for _, acc := range accommodations {
 		// Ép kiểu id an toàn
-		id := fmt.Sprintf("%v", acc.ID)
+		id := fmt.Sprintf("%v", acc["id"])
 
 		// Ghi metadata Bulk
 		meta := fmt.Sprintf(`{ "index" : { "_index" : "accommodations_test", "_id" : "%s" } }`, id)

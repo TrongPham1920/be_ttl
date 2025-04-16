@@ -1596,7 +1596,7 @@ func SearchAccommodations(c *gin.Context) {
 
 	query := services.BuildESQueryFromFilters(filters, excludeIDs)
 
-	results, total, err := services.SearchElastic(services.Es, query, "accommodations_test")
+	results, total, err := services.SearchElastic(services.Es, query, "accommodations")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"code": 0, "mess": "Lỗi tìm kiếm: " + err.Error()})
 		return
