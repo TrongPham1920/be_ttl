@@ -18,13 +18,10 @@ func ConnectCloudinary() {
 	}
 }
 
-func LoadEnv() error {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatalf("Error loading .env file")
+func LoadEnv() {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: Error loading .env file: %v", err)
 	}
-
-	return err
 }
 
 func GetEnv(key string) string {
