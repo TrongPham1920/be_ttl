@@ -11,6 +11,7 @@ import (
 	"new/services"
 	"new/services/logger"
 
+	"github.com/joho/godotenv"
 	"github.com/olahol/melody"
 )
 
@@ -19,72 +20,12 @@ func recreateUserTable() {
 	// 	panic("Failed to migrate tables: " + err.Error())
 	// }
 
-	// testUserID := uint(2)
-
-	// for i := 1; i <= 200; i++ {
-	// 	// Tạo dữ liệu giả cho hình ảnh với danh sách URL mà bạn yêu cầu
-	// 	imgData, err := json.Marshal([]string{
-	// 		"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413058/uploads/qie2oeiajk8j7wwg8seh.jpg",
-	// 		"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413059/uploads/domlvkwnaoklhjqtwqmu.jpg",
-	// 		"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413059/uploads/eskliphwt7yc9mhmczvm.jpg",
-	// 		"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413060/uploads/upck5rgvr7wowrx2bzaz.jpg",
-	// 		"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413060/uploads/htx5nzcm9i6i5y70ybgv.jpg",
-	// 		"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413061/uploads/xiqtah9exsn6jhybkwlo.jpg",
-	// 		"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413061/uploads/wvvnu5rpgndrl79n5exq.jpg",
-	// 		"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413063/uploads/jqufrmzvcp2adssedlz5.jpg",
-	// 	})
-	// 	if err != nil {
-	// 		log.Fatalf("Lỗi khi mã hóa imgData: %v", err)
-	// 	}
-
-	// 	// Tạo dữ liệu giả cho nội thất
-	// 	furnitureData, err := json.Marshal([]string{
-	// 		"Chair",
-	// 		"Table",
-	// 	})
-	// 	if err != nil {
-	// 		log.Fatalf("Lỗi khi mã hóa furnitureData: %v", err)
-	// 	}
-
-	// 	accommodation := models.Accommodation{
-	// 		Type:             2,
-	// 		UserID:           testUserID,
-	// 		Name:             fmt.Sprintf("Test Accommodation %d", i),
-	// 		Address:          fmt.Sprintf("Address %d", i),
-	// 		Avatar:           "https://res.cloudinary.com/dqipg0or3/image/upload/v1740413047/avatars/obtrpfkzvr5k83bur5w0.jpg",
-	// 		Img:              imgData,
-	// 		ShortDescription: "Đây là mô tả ngắn cho test data.",
-	// 		Description:      "Đây là mô tả chi tiết cho test data.",
-	// 		Status:           1,
-	// 		Num:              10,
-	// 		Furniture:        furnitureData,
-	// 		People:           2,
-	// 		Price:            100 + i,
-	// 		NumBed:           2,
-	// 		NumTolet:         1,
-	// 		TimeCheckIn:      "14:00",
-	// 		TimeCheckOut:     "12:00",
-	// 		Province:         "Test Province",
-	// 		District:         "Test District",
-	// 		Ward:             "Test Ward",
-	// 		Longitude:        106.0 + float64(i)/100,
-	// 		Latitude:         10.0 + float64(i)/100,
-	// 		CreateAt:         time.Now(),
-	// 		UpdateAt:         time.Now(),
-	// 		Benefits: []models.Benefit{
-	// 			{Id: 1, Name: "Wifi miễn phí"},
-	// 			{Id: 2, Name: "Hồ bơi"},
-	// 		},
-	// 	}
-
-	// 	if err := config.DB.Create(&accommodation).Error; err != nil {
-	// 		log.Fatalf("Lỗi khi tạo Accommodation %d: %v", i, err)
-	// 	}
-	// 	fmt.Printf("Đã tạo Accommodation ID: %d\n", accommodation.ID)
-	// }
 }
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Không load được file .env: %v", err)
+	}
 
 	router, m, err := config.InitApp()
 	if err != nil {

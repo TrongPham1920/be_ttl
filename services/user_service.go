@@ -2,12 +2,15 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 	_ "time/tzdata"
 
+	"new/config"
 	"new/models"
 	"new/services/logger"
 	"new/services/notification"
@@ -333,4 +336,119 @@ func NewUserServiceAdapter(service *UserService) *UserServiceAdapter {
 func (a *UserServiceAdapter) UpdateUserAmounts(m *melody.Melody) error {
 	notificationService := notification.NewMelodyService(m)
 	return a.service.UpdateUserAmounts(context.Background(), notificationService)
+}
+
+func UpdateDailyRevenue() error {
+	query := `
+		INSERT INTO user_revenues (user_id, date, revenue, order_count, created_at, updated_at)
+		SELECT 
+			invoices.admin_id AS user_id,
+			DATE(orders.created_at) AS date,
+			SUM(invoices.total_amount) AS revenue,
+			COUNT(invoices.id) AS order_count,
+			NOW() AS created_at,
+			NOW() AS updated_at
+		FROM invoices
+		JOIN orders ON invoices.order_id = orders.id
+		GROUP BY invoices.admin_id, DATE(orders.created_at)
+		ON CONFLICT (user_id, date)
+		DO UPDATE SET 
+			revenue = EXCLUDED.revenue,
+			order_count = EXCLUDED.order_count,
+			updated_at = NOW();
+	`
+
+	if err := config.DB.Exec(query).Error; err != nil {
+		log.Printf("Lỗi cập nhật doanh thu hàng ngày: %v", err)
+		return fmt.Errorf("updateDailyRevenue error: %w", err)
+	}
+
+	log.Printf("Cập nhật doanh thu hàng ngày thành công lúc %v", time.Now())
+	return nil
+}
+
+func UpdateUserTotalAmount() error {
+	query := `
+		UPDATE users
+		SET amount = COALESCE(agg.total_revenue, 0)
+		FROM (
+			SELECT user_id, SUM(revenue) AS total_revenue
+			FROM user_revenues
+			GROUP BY user_id
+		) AS agg
+		WHERE users.id = agg.user_id;
+	`
+
+	if err := config.DB.Exec(query).Error; err != nil {
+		log.Printf("Lỗi cập nhật tổng doanh thu cho user: %v", err)
+		return fmt.Errorf("updateUserTotalAmount error: %w", err)
+	}
+
+	log.Println("Cập nhật tổng doanh thu thành công")
+	return nil
+}
+
+func SeedTestAccommodations(count int, userID uint) {
+	for i := 1; i <= count; i++ {
+		// Tạo dữ liệu giả cho hình ảnh
+		imgData, err := json.Marshal([]string{
+			"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413058/uploads/qie2oeiajk8j7wwg8seh.jpg",
+			"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413059/uploads/domlvkwnaoklhjqtwqmu.jpg",
+			"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413059/uploads/eskliphwt7yc9mhmczvm.jpg",
+			"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413060/uploads/upck5rgvr7wowrx2bzaz.jpg",
+			"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413060/uploads/htx5nzcm9i6i5y70ybgv.jpg",
+			"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413061/uploads/xiqtah9exsn6jhybkwlo.jpg",
+			"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413061/uploads/wvvnu5rpgndrl79n5exq.jpg",
+			"https://res.cloudinary.com/dqipg0or3/image/upload/v1740413063/uploads/jqufrmzvcp2adssedlz5.jpg",
+		})
+		if err != nil {
+			log.Fatalf("Lỗi khi mã hóa imgData: %v", err)
+		}
+
+		// Dữ liệu nội thất
+		furnitureData, err := json.Marshal([]string{
+			"Chair",
+			"Table",
+		})
+		if err != nil {
+			log.Fatalf("Lỗi khi mã hóa furnitureData: %v", err)
+		}
+
+		accommodation := models.Accommodation{
+			Type:             2,
+			UserID:           userID,
+			Name:             fmt.Sprintf("Test Accommodation %d", i),
+			Address:          fmt.Sprintf("Address %d", i),
+			Avatar:           "https://res.cloudinary.com/dqipg0or3/image/upload/v1740413047/avatars/obtrpfkzvr5k83bur5w0.jpg",
+			Img:              imgData,
+			ShortDescription: "Đây là mô tả ngắn cho test data.",
+			Description:      "Đây là mô tả chi tiết cho test data.",
+			Status:           1,
+			Num:              10,
+			Furniture:        furnitureData,
+			People:           2,
+			Price:            100 + i,
+			NumBed:           2,
+			NumTolet:         1,
+			TimeCheckIn:      "14:00",
+			TimeCheckOut:     "12:00",
+			Province:         "Test Province",
+			District:         "Test District",
+			Ward:             "Test Ward",
+			Longitude:        106.0 + float64(i)/100,
+			Latitude:         10.0 + float64(i)/100,
+			CreateAt:         time.Now(),
+			UpdateAt:         time.Now(),
+			Benefits: []models.Benefit{
+				{Id: 1, Name: "Wifi miễn phí"},
+				{Id: 2, Name: "Hồ bơi"},
+			},
+		}
+
+		if err := config.DB.Create(&accommodation).Error; err != nil {
+			log.Fatalf("Lỗi khi tạo Accommodation %d: %v", i, err)
+		}
+
+		fmt.Printf("Đã tạo Accommodation ID: %d\n", accommodation.ID)
+	}
 }
