@@ -1,11 +1,13 @@
 package controllers
 
 import (
+	"new/config"
+	"new/models"
 	"new/response"
-	"strconv"
-
 	"new/services"
 	"new/services/notification"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/olahol/melody"
@@ -50,7 +52,8 @@ func (ctrl *NotificationController) NotifyUser(c *gin.Context) {
 	}
 
 	var req struct {
-		Message string `json:"message" binding:"required"`
+		Message     string `json:"message" binding:"required"`
+		Description string `json:"description"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.BadRequest(c, "Tin nhắn là bắt buộc")
@@ -58,14 +61,38 @@ func (ctrl *NotificationController) NotifyUser(c *gin.Context) {
 	}
 
 	message := notification.NewMessageBuilder(uint(userID), 0).Build() + " " + req.Message
-
 	observers := ctrl.userService.GetObservers(uint(userID))
-	if len(observers) > 0 {
-		for _, observer := range observers {
-			if err := observer.Notify(message); err != nil {
-			}
-		}
+	for _, observer := range observers {
+		_ = observer.Notify(message)
+	}
+	notifyService := notification.NewNotifyService()
+	if err := notifyService.CreateNotification(uint(userID), req.Message, req.Description); err != nil {
+		response.ServerError(c)
+		return
 	}
 
 	response.Success(c, message)
+}
+
+func (ctrl *NotificationController) GetNotifyByUser(c *gin.Context) {
+	token := c.GetHeader("Authorization")
+	if token == "" {
+		response.Unauthorized(c)
+		return
+	}
+	token = strings.TrimPrefix(token, "Bearer ")
+
+	userID, err := GetIDFromToken(token)
+	if err != nil {
+		response.Unauthorized(c)
+		return
+	}
+
+	var notifies []models.Notification
+	if err := config.DB.Where("user_id = ?", userID).Order("created_at DESC").Find(&notifies).Error; err != nil {
+		response.ServerError(c)
+		return
+	}
+
+	response.Success(c, notifies)
 }

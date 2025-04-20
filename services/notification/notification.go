@@ -2,9 +2,17 @@ package notification
 
 import (
 	"fmt"
+	"new/config"
+	"new/models"
 
 	"github.com/olahol/melody"
 )
+
+type NotifyService struct{}
+
+func NewNotifyService() *NotifyService {
+	return &NotifyService{}
+}
 
 type Service interface {
 	SendMessage(message string) error
@@ -34,13 +42,26 @@ func (s *MelodyService) SendMessage(message string) error {
 // 		return s.m.Broadcast([]byte(message))
 // 	}
 
-// 	return s.m.BroadcastFilter([]byte(message), func(session *melody.Session) bool {
-// 		if userIDStr, exists := session.Get("userID"); exists {
-// 			return userIDStr == fmt.Sprintf("%d", *userID)
-// 		}
-// 		return false
-// 	})
-// }
+//		return s.m.BroadcastFilter([]byte(message), func(session *melody.Session) bool {
+//			if userIDStr, exists := session.Get("userID"); exists {
+//				return userIDStr == fmt.Sprintf("%d", *userID)
+//			}
+//			return false
+//		})
+//	}
+func (s *NotifyService) CreateNotification(userID uint, message, description string) error {
+	notify := models.Notification{
+		UserID:      userID,
+		Message:     message,
+		Description: description,
+	}
+
+	if err := config.DB.Create(&notify).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
 
 type MessageBuilder struct {
 	userID  uint
