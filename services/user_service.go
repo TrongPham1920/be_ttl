@@ -3,8 +3,10 @@ package services
 import (
 	"context"
 	"encoding/json"
+
 	"fmt"
 	"log"
+
 	"time"
 	_ "time/tzdata"
 
@@ -52,11 +54,31 @@ type UserServiceInterface interface {
 	UpdateUserAmounts(ctx context.Context, notificationService notification.Service) error
 }
 
+type NotificationObserver interface {
+	Notify(message string) error
+}
+
+type MelodyObserver struct {
+	session *melody.Session
+	userID  uint
+}
+
+func NewMelodyObserver(session *melody.Session, userID uint) *MelodyObserver {
+	return &MelodyObserver{
+		session: session,
+		userID:  userID,
+	}
+}
+
+func (o *MelodyObserver) Notify(message string) error {
+	return o.session.Write([]byte(message))
+}
+
 type UserService struct {
-	db     *gorm.DB
-	logger logger.Logger
-	melody *melody.Melody
-	// observers map[uint][]NotificationObserver
+	db        *gorm.DB
+	logger    logger.Logger
+	melody    *melody.Melody
+	observers map[uint][]NotificationObserver
 }
 
 type UserServiceOptions struct {
@@ -66,10 +88,10 @@ type UserServiceOptions struct {
 
 func NewUserService(opts UserServiceOptions, m *melody.Melody) *UserService {
 	return &UserService{
-		db:     opts.DB,
-		logger: opts.Logger,
-		melody: m,
-		// observers: make(map[uint][]NotificationObserver),
+		db:        opts.DB,
+		logger:    opts.Logger,
+		melody:    m,
+		observers: make(map[uint][]NotificationObserver),
 	}
 }
 
@@ -180,6 +202,27 @@ func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService
 	}
 	s.logger.Info("✅ Hoàn tất cập nhật amount cho tất cả users.")
 	return nil
+}
+
+func (s *UserService) RegisterObserver(session *melody.Session, userID uint) {
+	observer := NewMelodyObserver(session, userID)
+	s.observers[userID] = append(s.observers[userID], observer)
+	s.logger.Info("Người quan sát đã đăng ký cho userID: %d", userID)
+}
+
+func (s *UserService) RemoveObserver(session *melody.Session, userID uint) {
+	observers := s.observers[userID]
+	for i, obs := range observers {
+		if obs.(*MelodyObserver).session == session {
+			s.observers[userID] = append(observers[:i], observers[i+1:]...)
+			break
+		}
+	}
+	s.logger.Info("Đã xóa người quan sát cho userID: %d", userID)
+}
+
+func (s *UserService) GetObservers(userID uint) []NotificationObserver {
+	return s.observers[userID]
 }
 
 type UserServiceAdapter struct {

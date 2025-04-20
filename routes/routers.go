@@ -20,7 +20,7 @@ import (
 func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *cloudinary.Cloudinary, m *melody.Melody, userService *services.UserService) {
 
 	userController := controllers.NewUserController(db, redisCli)
-
+	notificationCtrl := controllers.NewNotificationController(userService, m)
 	v1 := router.Group("/api/v1")
 	v1.GET("/users", middlewares.AuthMiddleware(1, 2), userController.GetUsers)
 	v1.POST("/users", middlewares.AuthMiddleware(1, 2), userController.CreateUser)
@@ -195,8 +195,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *c
 		m.Broadcast(message)
 		c.String(200, "Broadcast message sent!")
 	})
-	// v1.POST("/notify/all", userService.NotifyAll)
-	// v1.POST("/notify/user/:userID", userService.NotifyUser)
+	v1.POST("/notify/all", notificationCtrl.NotifyAll)
+	v1.POST("/notify/user/:userID", notificationCtrl.NotifyUser)
 
 	router.GET("/wschat", controllers.HandleWebSocket)
 }
