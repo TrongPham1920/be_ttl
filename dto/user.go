@@ -13,8 +13,8 @@ type UserResponse struct {
 	UpdatedAt        time.Time      `json:"updatedAt"`
 	Banks            []Bank         `json:"banks"`
 	Children         []UserResponse `json:"children,omitempty"`
-	Status           int            `json:"status,omitempty"`
-	IsVerified       bool           `json:"isVerified,omitempty"`
+	Status           int            `json:"status"`
+	IsVerified       bool           `json:"isVerified"`
 	Avatar           string         `json:"avatar,omitempty"`
 	DateOfBirth      string         `json:"dateOfBirth,omitempty"`
 	Amount           int64          `json:"amount,omitempty"`

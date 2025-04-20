@@ -21,10 +21,11 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *c
 
 	userController := controllers.NewUserController(db, redisCli)
 	notificationCtrl := controllers.NewNotificationController(userService, m)
+
 	v1 := router.Group("/api/v1")
 	v1.GET("/users", middlewares.AuthMiddleware(1, 2), userController.GetUsers)
 	v1.POST("/users", middlewares.AuthMiddleware(1, 2), userController.CreateUser)
-	v1.GET("/users/:id", userController.GetUserByID)
+	v1.GET("/users/:id", userController.GetUserDetailByID)
 	v1.PUT("/users", middlewares.AuthMiddleware(1, 2, 3, 0), userController.UpdateUser)
 	v1.PUT("/userStatus", middlewares.AuthMiddleware(1, 2), userController.ChangeUserStatus)
 	v1.GET("/receptionist/:id", userController.GetReceptionistByID)
