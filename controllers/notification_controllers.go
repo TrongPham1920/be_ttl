@@ -60,7 +60,7 @@ func (ctrl *NotificationController) NotifyUser(c *gin.Context) {
 		return
 	}
 
-	message := notification.NewMessageBuilder(uint(userID), 0).Build() + " " + req.Message
+	message := req.Message
 	observers := ctrl.userService.GetObservers(uint(userID))
 	for _, observer := range observers {
 		_ = observer.Notify(message)
