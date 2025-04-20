@@ -8,7 +8,8 @@ import (
 	"github.com/olahol/melody"
 )
 
-type NotifyService struct{}
+type NotifyService struct {
+}
 
 func NewNotifyService() *NotifyService {
 	return &NotifyService{}
@@ -57,6 +58,14 @@ func (s *NotifyService) CreateNotification(userID uint, message, description str
 	}
 
 	if err := config.DB.Create(&notify).Error; err != nil {
+		return err
+	}
+
+	return nil
+}
+func (s *NotifyService) NotifyUser(userID uint, message string, description string) error {
+
+	if err := s.CreateNotification(userID, message, description); err != nil {
 		return err
 	}
 

@@ -6,7 +6,6 @@ import (
 	"new/response"
 	"new/services"
 	"new/services/notification"
-	"strconv"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -43,36 +42,36 @@ func (ctrl *NotificationController) NotifyAll(c *gin.Context) {
 	response.Success(c, req.Message)
 }
 
-func (ctrl *NotificationController) NotifyUser(c *gin.Context) {
-	userIDStr := c.Param("userID")
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
-	if err != nil {
-		response.BadRequest(c, "ID người dùng không hợp lệ")
-		return
-	}
+// func (ctrl *NotificationController) NotifyUser(c *gin.Context) {
+// 	userIDStr := c.Param("userID")
+// 	userID, err := strconv.ParseUint(userIDStr, 10, 32)
+// 	if err != nil {
+// 		response.BadRequest(c, "ID người dùng không hợp lệ")
+// 		return
+// 	}
 
-	var req struct {
-		Message     string `json:"message" binding:"required"`
-		Description string `json:"description"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Tin nhắn là bắt buộc")
-		return
-	}
+// 	var req struct {
+// 		Message     string `json:"message" binding:"required"`
+// 		Description string `json:"description"`
+// 	}
+// 	if err := c.ShouldBindJSON(&req); err != nil {
+// 		response.BadRequest(c, "Tin nhắn là bắt buộc")
+// 		return
+// 	}
 
-	message := req.Message
-	observers := ctrl.userService.GetObservers(uint(userID))
-	for _, observer := range observers {
-		_ = observer.Notify(message)
-	}
-	notifyService := notification.NewNotifyService()
-	if err := notifyService.CreateNotification(uint(userID), req.Message, req.Description); err != nil {
-		response.ServerError(c)
-		return
-	}
+// 	message := req.Message
+// 	observers := ctrl.userService.GetObservers(uint(userID))
+// 	for _, observer := range observers {
+// 		_ = observer.Notify(message)
+// 	}
+// 	notifyService := notification.NewNotifyService()
+// 	if err := notifyService.CreateNotification(uint(userID), req.Message, req.Description); err != nil {
+// 		response.ServerError(c)
+// 		return
+// 	}
 
-	response.Success(c, message)
-}
+// 	response.Success(c, message)
+// }
 
 func (ctrl *NotificationController) GetNotifyByUser(c *gin.Context) {
 	token := c.GetHeader("Authorization")

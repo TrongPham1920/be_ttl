@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"new/dto"
 	"new/models"
 	"new/response"
+	"new/services/notification"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/text/unicode/norm"
@@ -209,7 +211,15 @@ func GetWithdrawalHistory(c *gin.Context) {
 	} else {
 		responses = responses[start:end]
 	}
+	notifyService := notification.NewNotifyService()
 
+	for _, w := range withdrawals {
+		if w.Status == "pending" {
+			message := fmt.Sprintf("Bạn có yêu cầu rút tiền từ người dùng #%d với số tiền %.2f", w.UserID, w.Amount)
+			description := fmt.Sprintf("Yêu cầu được tạo lúc %s", w.CreatedAt.Format("02/01/2006 15:04"))
+			_ = notifyService.NotifyUser(1, message, description)
+		}
+	}
 	response.SuccessWithPagination(c, responses, page, limit, total)
 }
 
