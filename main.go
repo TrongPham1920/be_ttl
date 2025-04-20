@@ -7,6 +7,7 @@ import (
 	// "strconv"
 
 	"new/config"
+	"new/models"
 
 	"new/routes"
 	"new/services"
@@ -20,6 +21,10 @@ func recreateUserTable() {
 	// if err := config.DB.AutoMigrate(&models.Room{}, &models.Benefit{}, &models.User{}, models.Rate{}, models.Order{}, models.Invoice{}, models.Bank{}, models.Accommodation{}, models.AccommodationStatus{}, models.BankFake{}, models.UserDiscount{}, models.Discount{}, models.Holiday{}, models.RoomStatus{}, models.WithdrawalHistory{}); err != nil {
 	// 	panic("Failed to migrate tables: " + err.Error())
 	// }
+
+	if err := config.DB.AutoMigrate(&models.Notification{}); err != nil {
+		panic("Failed to migrate tables: " + err.Error())
+	}
 
 }
 
@@ -38,7 +43,7 @@ func main() {
 		Logger: logger.NewDefaultLogger(logger.InfoLevel),
 	}, m)
 
-	// recreateUserTable()
+	recreateUserTable()
 
 	// Xử lý kết nối WebSocket với Observer Pattern
 	// m.HandleConnect(func(s *melody.Session) {

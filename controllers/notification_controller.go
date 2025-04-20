@@ -128,6 +128,7 @@ func (c *NotificationController) NotifyUser(ctx *gin.Context) {
 	var req struct {
 		Message string `json:"message" binding:"required"`
 	}
+
 	if err := ctx.ShouldBindJSON(&req); err != nil {
 		ctx.JSON(400, &ServiceError{
 			Code:    ErrCodeInvalidInput,
@@ -181,7 +182,7 @@ func (c *NotificationController) NotifyUser(ctx *gin.Context) {
 func (c *NotificationController) RegisterObserver(session *melody.Session, userID uint) {
 	observer := NewMelodyObserver(session, userID)
 	c.observers[userID] = append(c.observers[userID], observer)
-	c.logger.Info("Người quan sát đã đăng ký cho userID: %d", userID)
+
 }
 
 func (c *NotificationController) RemoveObserver(session *melody.Session, userID uint) {
@@ -192,5 +193,5 @@ func (c *NotificationController) RemoveObserver(session *melody.Session, userID 
 			break
 		}
 	}
-	c.logger.Info("Đã xóa người quan sát cho userID: %d", userID)
+
 }
