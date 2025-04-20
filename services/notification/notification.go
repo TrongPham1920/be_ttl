@@ -62,19 +62,3 @@ func (s *NotifyService) CreateNotification(userID uint, message, description str
 
 	return nil
 }
-
-type MessageBuilder struct {
-	userID  uint
-	revenue float64
-}
-
-func NewMessageBuilder(userID uint, revenue float64) *MessageBuilder {
-	return &MessageBuilder{
-		userID:  userID,
-		revenue: revenue,
-	}
-}
-
-func (b *MessageBuilder) Build() string {
-	return fmt.Sprintf("🔔 User %d đã được cộng %.2f vào tài khoản.", b.userID, b.revenue)
-}

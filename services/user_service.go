@@ -158,11 +158,6 @@ func (s *UserService) updateUserAmount(ctx context.Context, tx *gorm.DB, userID 
 	return nil
 }
 
-func (s *UserService) sendNotification(notificationService notification.Service, userID uint, revenue float64) error {
-	message := notification.NewMessageBuilder(userID, revenue).Build()
-	return notificationService.SendMessage(message)
-}
-
 func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService notification.Service) error {
 	revenues, err := s.GetTodayUserRevenue(ctx)
 	if err != nil {
@@ -189,9 +184,7 @@ func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService
 			tx.Rollback()
 			return err
 		}
-		if err := s.sendNotification(notificationService, rev.UserID, rev.Revenue); err != nil {
-			s.logger.Error("Lỗi gửi thông báo: %v", err)
-		}
+
 	}
 	if err := tx.Commit().Error; err != nil {
 		return &ServiceError{
