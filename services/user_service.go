@@ -3,10 +3,8 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 	_ "time/tzdata"
 
@@ -15,7 +13,6 @@ import (
 	"new/services/logger"
 	"new/services/notification"
 
-	"github.com/gin-gonic/gin"
 	"github.com/olahol/melody"
 	"gorm.io/gorm"
 )
@@ -55,31 +52,11 @@ type UserServiceInterface interface {
 	UpdateUserAmounts(ctx context.Context, notificationService notification.Service) error
 }
 
-type NotificationObserver interface {
-	Notify(message string) error
-}
-
-type MelodyObserver struct {
-	session *melody.Session
-	userID  uint
-}
-
-func NewMelodyObserver(session *melody.Session, userID uint) *MelodyObserver {
-	return &MelodyObserver{
-		session: session,
-		userID:  userID,
-	}
-}
-
-func (o *MelodyObserver) Notify(message string) error {
-	return o.session.Write([]byte(message))
-}
-
 type UserService struct {
-	db        *gorm.DB
-	logger    logger.Logger
-	melody    *melody.Melody
-	observers map[uint][]NotificationObserver
+	db     *gorm.DB
+	logger logger.Logger
+	melody *melody.Melody
+	// observers map[uint][]NotificationObserver
 }
 
 type UserServiceOptions struct {
@@ -89,10 +66,10 @@ type UserServiceOptions struct {
 
 func NewUserService(opts UserServiceOptions, m *melody.Melody) *UserService {
 	return &UserService{
-		db:        opts.DB,
-		logger:    opts.Logger,
-		melody:    m,
-		observers: make(map[uint][]NotificationObserver),
+		db:     opts.DB,
+		logger: opts.Logger,
+		melody: m,
+		// observers: make(map[uint][]NotificationObserver),
 	}
 }
 
@@ -203,126 +180,6 @@ func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService
 	}
 	s.logger.Info("✅ Hoàn tất cập nhật amount cho tất cả users.")
 	return nil
-}
-
-// đăng ký observer cho user
-func (s *UserService) RegisterObserver(session *melody.Session, userID uint) {
-	observer := NewMelodyObserver(session, userID)
-	s.observers[userID] = append(s.observers[userID], observer)
-	s.logger.Info("Người quan sát đã đăng ký cho userID: %d", userID)
-}
-
-// xóa observer cho user
-func (s *UserService) RemoveObserver(session *melody.Session, userID uint) {
-	observers := s.observers[userID]
-	for i, obs := range observers {
-		if obs.(*MelodyObserver).session == session {
-			s.observers[userID] = append(observers[:i], observers[i+1:]...)
-			break
-		}
-	}
-	s.logger.Info("Đã xóa người quan sát cho userID: %d", userID)
-}
-
-func (s *UserService) NotifyAll(c *gin.Context) {
-	var req struct {
-		Message string `json:"message" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, &ServiceError{
-			Code:    ErrCodeInvalidInput,
-			Message: "Tin nhắn là bắt buộc",
-			Err:     err,
-		})
-		return
-	}
-
-	notificationService := notification.NewMelodyService(s.melody)
-	err := notificationService.SendMessage(req.Message)
-	if err != nil {
-		c.JSON(500, &ServiceError{
-			Code:    ErrCodeNotifyFailed,
-			Message: "Lỗi gửi thông báo tổng",
-			Err:     err,
-		})
-		return
-	}
-
-	c.JSON(200, gin.H{
-		"code":    1,
-		"message": "Đã gửi thông báo tổng thành công",
-		"data":    req.Message,
-	})
-}
-
-// NotifyUser với thông báo qua WebSocket và email đồng thời
-func (s *UserService) NotifyUser(c *gin.Context) {
-	userIDStr := c.Param("userID")
-
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
-	if err != nil {
-		c.JSON(400, &ServiceError{
-			Code:    ErrCodeInvalidUserID,
-			Message: "ID người dùng không hợp lệ",
-			Err:     err,
-		})
-		return
-	}
-
-	var req struct {
-		Message string `json:"message" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(400, &ServiceError{
-			Code:    ErrCodeInvalidInput,
-			Message: "Tin nhắn là bắt buộc",
-			Err:     err,
-		})
-		return
-	}
-
-	message := notification.NewMessageBuilder(uint(userID), 0).Build() + " " + req.Message
-
-	observers := s.observers[uint(userID)]
-	var user models.User
-	// Lấy thông tin user từ DB để lấy email
-	if err := s.db.First(&user, userID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			c.JSON(404, &ServiceError{
-				Code:    ErrCodeUserNotFound,
-				Message: "Không tìm thấy người dùng",
-			})
-			return
-		}
-		c.JSON(500, &ServiceError{
-			Code:    ErrCodeUpdateFailed,
-			Message: "Không thể lấy được người dùng",
-			Err:     err,
-		})
-		return
-	}
-
-	// Gửi qua WebSocket nếu có observer
-	if len(observers) > 0 {
-		for _, observer := range observers {
-			if err := observer.Notify(message); err != nil {
-				// Không làm gì nếu lỗi
-			}
-		}
-	}
-
-	// Gửi qua email bất kể có observer hay không
-	err = sendNews(user.Email, "Thông báo từ hệ thống", message)
-	if err != nil {
-		// Không làm gì nếu lỗi
-	}
-
-	// Trả về response thành công
-	c.JSON(200, gin.H{
-		"code":    1,
-		"message": "Thông báo đã được gửi đến người dùng",
-		"data":    message,
-	})
 }
 
 type UserServiceAdapter struct {

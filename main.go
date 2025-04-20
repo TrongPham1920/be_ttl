@@ -3,7 +3,8 @@ package main
 import (
 	"log"
 	"os"
-	"strconv"
+
+	// "strconv"
 
 	"new/config"
 
@@ -12,7 +13,7 @@ import (
 	"new/services/logger"
 
 	"github.com/joho/godotenv"
-	"github.com/olahol/melody"
+	// "github.com/olahol/melody"
 )
 
 func recreateUserTable() {
@@ -40,22 +41,22 @@ func main() {
 	// recreateUserTable()
 
 	// Xử lý kết nối WebSocket với Observer Pattern
-	m.HandleConnect(func(s *melody.Session) {
-		userIDStr := s.Request.URL.Query().Get("userID")
-		if userIDStr != "" {
-			userID, _ := strconv.ParseUint(userIDStr, 10, 32)
-			s.Set("userID", userIDStr)
-			userService.RegisterObserver(s, uint(userID))
-		}
-	})
+	// m.HandleConnect(func(s *melody.Session) {
+	// 	userIDStr := s.Request.URL.Query().Get("userID")
+	// 	if userIDStr != "" {
+	// 		userID, _ := strconv.ParseUint(userIDStr, 10, 32)
+	// 		s.Set("userID", userIDStr)
+	// 		notificationController.RegisterObserver(s, uint(userID))
+	// 	}
+	// })
 
-	m.HandleDisconnect(func(s *melody.Session) {
-		userIDStr, exists := s.Get("userID")
-		if exists {
-			userID, _ := strconv.ParseUint(userIDStr.(string), 10, 32)
-			userService.RemoveObserver(s, uint(userID))
-		}
-	})
+	// m.HandleDisconnect(func(s *melody.Session) {
+	// 	userIDStr, exists := s.Get("userID")
+	// 	if exists {
+	// 		userID, _ := strconv.ParseUint(userIDStr.(string), 10, 32)
+	// 		notificationController.RemoveObserver(s, uint(userID))
+	// 	}
+	// })
 
 	config.InitWebSocket(router, m)
 

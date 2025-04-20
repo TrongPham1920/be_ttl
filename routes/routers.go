@@ -195,8 +195,8 @@ func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *c
 		m.Broadcast(message)
 		c.String(200, "Broadcast message sent!")
 	})
-	v1.POST("/notify/all", userService.NotifyAll)
-	v1.POST("/notify/user/:userID", userService.NotifyUser)
+	// v1.POST("/notify/all", userService.NotifyAll)
+	// v1.POST("/notify/user/:userID", userService.NotifyUser)
 
 	router.GET("/wschat", controllers.HandleWebSocket)
 }
