@@ -154,7 +154,7 @@ func (s *UserService) updateUserAmount(ctx context.Context, tx *gorm.DB, userID 
 			Err:     err,
 		}
 	}
-	s.logger.Info("✅ Cập nhật thành công user_id %d: +%.2f", userID, revenue)
+	s.logger.Info("Cập nhật thành công user_id %d: +%.2f", userID, revenue)
 	return nil
 }
 
@@ -166,11 +166,11 @@ func (s *UserService) sendNotification(notificationService notification.Service,
 func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService notification.Service) error {
 	revenues, err := s.GetTodayUserRevenue(ctx)
 	if err != nil {
-		s.logger.Error("❌ Lỗi lấy doanh thu: %v", err)
+		s.logger.Error("Lỗi lấy doanh thu: %v", err)
 		return err
 	}
 	if len(revenues) == 0 {
-		s.logger.Info("ℹ️ Không có doanh thu nào để cập nhật hôm nay.")
+		s.logger.Info("Không có doanh thu nào để cập nhật hôm nay.")
 		return &ServiceError{
 			Code:    ErrCodeNoRevenue,
 			Message: "không có doanh thu để cập nhật",
@@ -180,7 +180,7 @@ func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService
 	if tx.Error != nil {
 		return &ServiceError{
 			Code:    ErrCodeUpdateFailed,
-			Message: "lỗi khi bắt đầu transaction",
+			Message: "Lỗi khi bắt đầu transaction",
 			Err:     tx.Error,
 		}
 	}
@@ -190,17 +190,17 @@ func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService
 			return err
 		}
 		if err := s.sendNotification(notificationService, rev.UserID, rev.Revenue); err != nil {
-			s.logger.Error("❌ Lỗi gửi thông báo: %v", err)
+			s.logger.Error("Lỗi gửi thông báo: %v", err)
 		}
 	}
 	if err := tx.Commit().Error; err != nil {
 		return &ServiceError{
 			Code:    ErrCodeUpdateFailed,
-			Message: "lỗi khi commit transaction",
+			Message: "Lỗi khi commit transaction",
 			Err:     err,
 		}
 	}
-	s.logger.Info("✅ Hoàn tất cập nhật amount cho tất cả users.")
+	s.logger.Info("Hoàn tất cập nhật amount cho tất cả users.")
 	return nil
 }
 
