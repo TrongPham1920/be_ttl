@@ -233,11 +233,6 @@ func NewUserServiceAdapter(service *UserService) *UserServiceAdapter {
 	return &UserServiceAdapter{service: service}
 }
 
-func (a *UserServiceAdapter) UpdateUserAmounts(m *melody.Melody) error {
-	notificationService := notification.NewMelodyService(m)
-	return a.service.UpdateUserAmounts(context.Background(), notificationService)
-}
-
 func UpdateDailyRevenue() error {
 	query := `
 		INSERT INTO user_revenues (user_id, date, revenue, order_count, created_at, updated_at)
