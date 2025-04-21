@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 
 	"new/config"
@@ -94,7 +95,13 @@ func CreateWithdrawalHistory(c *gin.Context) {
 	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
 
 	message := fmt.Sprintf("Bạn có yêu cầu rút tiền từ người dùng #%d với số tiền %.2f", withdrawal.UserID, withdrawal.Amount)
-	description := fmt.Sprintf("Yêu cầu này được tạo lúc %s, vui lòng kiểm tra!")
+	description := fmt.Sprintf(
+		"Yêu cầu rút tiền vừa được tạo bởi người dùng có %d\n\nHọ tên: %s\nSố điện thoại: %s\nSố tiền yêu cầu rút: %.0f VNĐ\nThời gian tạo yêu cầu: %s\n\nVui lòng truy cập hệ thống để kiểm tra và xử lý yêu cầu này kịp thời.",
+		user.Name,
+		user.PhoneNumber,
+		withdrawal.Amount,
+		time.Now().Format("15:04:05 ngày 02/01/2006"),
+	)
 
 	_ = notifyService.NotifyUser(1, message, description)
 
@@ -253,14 +260,13 @@ func ConfirmWithdrawalHistory(c *gin.Context) {
 		response.NotFound(c)
 		return
 	}
+	var user models.User
+	if err := config.DB.First(&user, withdrawal.UserID).Error; err != nil {
+		response.NotFound(c)
+		return
+	}
 
 	if input.Status == "1" {
-		var user models.User
-		if err := config.DB.First(&user, withdrawal.UserID).Error; err != nil {
-			response.NotFound(c)
-			return
-		}
-
 		user.Amount = user.Amount - withdrawal.Amount
 
 		if err := config.DB.Save(&user).Error; err != nil {
@@ -282,6 +288,27 @@ func ConfirmWithdrawalHistory(c *gin.Context) {
 	if err := config.DB.Save(&withdrawal).Error; err != nil {
 		response.ServerError(c)
 		return
+	}
+
+	// Gửi thông báo cho người dùng
+	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
+
+	if input.Status == "1" {
+		message := "Yêu cầu rút tiền của bạn đã được duyệt"
+		description := fmt.Sprintf(
+			"Yêu cầu rút tiền số tiền %.0f VNĐ của bạn đã được duyệt vào lúc %s.",
+			withdrawal.Amount,
+			time.Now().Format("15:04:05 ngày 02/01/2006"),
+		)
+		_ = notifyService.NotifyUser(user.ID, message, description)
+	} else if input.Status == "2" {
+		message := "Yêu cầu rút tiền của bạn đã bị từ chối"
+		description := fmt.Sprintf(
+			"Yêu cầu rút tiền của bạn đã bị từ chối vào lúc %s.\nLý do: %s",
+			time.Now().Format("15:04:05 ngày 02/01/2006"),
+			input.Reason,
+		)
+		_ = notifyService.NotifyUser(user.ID, message, description)
 	}
 
 	response.Success(c, withdrawal)
