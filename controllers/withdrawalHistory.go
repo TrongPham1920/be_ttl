@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	"new/dto"
 	"new/models"
 	"new/response"
+	"new/services/notification"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/text/unicode/norm"
@@ -92,6 +94,13 @@ func CreateWithdrawalHistory(c *gin.Context) {
 		response.ServerError(c)
 		return
 	}
+	// Gửi thông báo đến admin
+	notifyService := notification.NewNotifyService()
+
+	message := fmt.Sprintf("Bạn có yêu cầu rút tiền từ người dùng #%d với số tiền %.2f", withdrawal.UserID, withdrawal.Amount)
+	description := fmt.Sprintf("Yêu cầu này được tạo lúc %s, vui lòng kiểm tra!")
+
+	_ = notifyService.NotifyUser(1, message, description)
 
 	response.Success(c, withdrawal)
 }

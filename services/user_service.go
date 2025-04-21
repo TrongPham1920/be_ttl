@@ -3,10 +3,10 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"errors"
+
 	"fmt"
 	"log"
-	"strconv"
+
 	"time"
 	_ "time/tzdata"
 
@@ -15,7 +15,6 @@ import (
 	"new/services/logger"
 	"new/services/notification"
 
-	"github.com/gin-gonic/gin"
 	"github.com/olahol/melody"
 	"gorm.io/gorm"
 )
@@ -155,23 +154,18 @@ func (s *UserService) updateUserAmount(ctx context.Context, tx *gorm.DB, userID 
 			Err:     err,
 		}
 	}
-	s.logger.Info("✅ Cập nhật thành công user_id %d: +%.2f", userID, revenue)
+	s.logger.Info("Cập nhật thành công user_id %d: +%.2f", userID, revenue)
 	return nil
-}
-
-func (s *UserService) sendNotification(notificationService notification.Service, userID uint, revenue float64) error {
-	message := notification.NewMessageBuilder(userID, revenue).Build()
-	return notificationService.SendMessage(message)
 }
 
 func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService notification.Service) error {
 	revenues, err := s.GetTodayUserRevenue(ctx)
 	if err != nil {
-		s.logger.Error("❌ Lỗi lấy doanh thu: %v", err)
+		s.logger.Error("Lỗi lấy doanh thu: %v", err)
 		return err
 	}
 	if len(revenues) == 0 {
-		s.logger.Info("ℹ️ Không có doanh thu nào để cập nhật hôm nay.")
+		s.logger.Info("Không có doanh thu nào để cập nhật hôm nay.")
 		return &ServiceError{
 			Code:    ErrCodeNoRevenue,
 			Message: "không có doanh thu để cập nhật",
@@ -181,7 +175,7 @@ func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService
 	if tx.Error != nil {
 		return &ServiceError{
 			Code:    ErrCodeUpdateFailed,
-			Message: "lỗi khi bắt đầu transaction",
+			Message: "Lỗi khi bắt đầu transaction",
 			Err:     tx.Error,
 		}
 	}
@@ -190,29 +184,25 @@ func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService
 			tx.Rollback()
 			return err
 		}
-		if err := s.sendNotification(notificationService, rev.UserID, rev.Revenue); err != nil {
-			s.logger.Error("❌ Lỗi gửi thông báo: %v", err)
-		}
+
 	}
 	if err := tx.Commit().Error; err != nil {
 		return &ServiceError{
 			Code:    ErrCodeUpdateFailed,
-			Message: "lỗi khi commit transaction",
+			Message: "Lỗi khi commit transaction",
 			Err:     err,
 		}
 	}
-	s.logger.Info("✅ Hoàn tất cập nhật amount cho tất cả users.")
+	s.logger.Info("Hoàn tất cập nhật amount cho tất cả users.")
 	return nil
 }
 
-// đăng ký observer cho user
 func (s *UserService) RegisterObserver(session *melody.Session, userID uint) {
 	observer := NewMelodyObserver(session, userID)
 	s.observers[userID] = append(s.observers[userID], observer)
 	s.logger.Info("Người quan sát đã đăng ký cho userID: %d", userID)
 }
 
-// xóa observer cho user
 func (s *UserService) RemoveObserver(session *melody.Session, userID uint) {
 	observers := s.observers[userID]
 	for i, obs := range observers {
@@ -224,122 +214,8 @@ func (s *UserService) RemoveObserver(session *melody.Session, userID uint) {
 	s.logger.Info("Đã xóa người quan sát cho userID: %d", userID)
 }
 
-func (s *UserService) NotifyAll(c *gin.Context) {
-	var req struct {
-		Message string `json:"message" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		s.logger.Error("❌ Lỗi đầu vào: tin nhắn là bắt buộc: %v", err)
-		c.JSON(400, &ServiceError{
-			Code:    ErrCodeInvalidInput,
-			Message: "Tin nhắn là bắt buộc",
-			Err:     err,
-		})
-		return
-	}
-
-	notificationService := notification.NewMelodyService(s.melody)
-	err := notificationService.SendMessage(req.Message)
-	if err != nil {
-		s.logger.Error("❌ Lỗi gửi thông báo tổng: %v", err)
-		c.JSON(500, &ServiceError{
-			Code:    ErrCodeNotifyFailed,
-			Message: "Lỗi gửi thông báo tổng",
-			Err:     err,
-		})
-		return
-	}
-
-	s.logger.Info("✅ Đã gửi thông báo tổng: %s", req.Message)
-	c.JSON(200, gin.H{
-		"code":    1,
-		"message": "Đã gửi thông báo tổng thành công",
-		"data":    req.Message,
-	})
-}
-
-// NotifyUser với thông báo qua WebSocket và email đồng thời
-func (s *UserService) NotifyUser(c *gin.Context) {
-	userIDStr := c.Param("userID")
-	s.logger.Info("Đã nhận userID từ yêu cầu: %s", userIDStr)
-
-	userID, err := strconv.ParseUint(userIDStr, 10, 32)
-	if err != nil {
-		s.logger.Error("❌ Không phân tích được userID: %s, lỗi: %v", userIDStr, err)
-		c.JSON(400, &ServiceError{
-			Code:    ErrCodeInvalidUserID,
-			Message: "ID người dùng không hợp lệ",
-			Err:     err,
-		})
-		return
-	}
-	s.logger.Info("Parsed userID: %d", userID)
-
-	var req struct {
-		Message string `json:"message" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		s.logger.Error("❌ Lỗi đầu vào cho userID %d: tin nhắn là bắt buộc: %v", userID, err)
-		c.JSON(400, &ServiceError{
-			Code:    ErrCodeInvalidInput,
-			Message: "Tin nhắn là bắt buộc",
-			Err:     err,
-		})
-		return
-	}
-	s.logger.Info("Đã nhận được tin nhắn cho userID %d: %s", userID, req.Message)
-
-	message := notification.NewMessageBuilder(uint(userID), 0).Build() + " " + req.Message
-	s.logger.Info("Tin nhắn được xây dựng cho userID %d: %s", userID, message)
-
-	observers := s.observers[uint(userID)]
-	var user models.User
-	// Lấy thông tin user từ DB để lấy email
-	if err := s.db.First(&user, userID).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			s.logger.Error("❌ Không tìm thấy người dùng cho userID: %d", userID)
-			c.JSON(404, &ServiceError{
-				Code:    ErrCodeUserNotFound,
-				Message: "Không tìm thấy người dùng",
-			})
-			return
-		}
-		s.logger.Error("❌ Không thể tìm nạp người dùng cho userID %d: %v", userID, err)
-		c.JSON(500, &ServiceError{
-			Code:    ErrCodeUpdateFailed,
-			Message: "Không thể lấy được người dùng",
-			Err:     err,
-		})
-		return
-	}
-
-	// Gửi qua WebSocket nếu có observer
-	if len(observers) > 0 {
-		s.logger.Info("Tìm thấy %d người quan sát cho userID: %d", len(observers), userID)
-		for _, observer := range observers {
-			if err := observer.Notify(message); err != nil {
-				s.logger.Error("❌ Không thông báo được qua WebSocket cho userID %d: %v", userID, err)
-			}
-		}
-		s.logger.Info("✅ Đã gửi thành công thông báo WebSocket tới userID %d: %s", userID, req.Message)
-	} else {
-		s.logger.Info("Không tìm thấy người quan sát nào cho userID: %d", userID)
-	}
-
-	// Gửi qua email bất kể có observer hay không
-	err = sendNews(user.Email, "Thông báo từ hệ thống", message)
-	if err != nil {
-		s.logger.Error("❌ Không gửi được thông báo qua email cho userID %d: %v", userID, err)
-	} else {
-		s.logger.Info("📧 Thông báo qua email đã được gửi đến %s cho userID: %d", user.Email, userID)
-	}
-
-	// Trả về response thành công
-	c.JSON(200, gin.H{
-		"code":    1,
-		"message": "Thông báo đã được gửi đến người dùng",
-		"data":    message,
-	})
+func (s *UserService) GetObservers(userID uint) []NotificationObserver {
+	return s.observers[userID]
 }
 
 type UserServiceAdapter struct {
@@ -348,11 +224,6 @@ type UserServiceAdapter struct {
 
 func NewUserServiceAdapter(service *UserService) *UserServiceAdapter {
 	return &UserServiceAdapter{service: service}
-}
-
-func (a *UserServiceAdapter) UpdateUserAmounts(m *melody.Melody) error {
-	notificationService := notification.NewMelodyService(m)
-	return a.service.UpdateUserAmounts(context.Background(), notificationService)
 }
 
 func UpdateDailyRevenue() error {

@@ -62,7 +62,6 @@ func (u UserController) GetUsers(c *gin.Context) {
 		limit, _ = strconv.Atoi(limitStr)
 	}
 
-	// Tạo cache key dựa trên vai trò và bộ lọc
 	var cacheKey string
 	if currentUserRole == 1 {
 		cacheKey = "users:all"
@@ -73,7 +72,6 @@ func (u UserController) GetUsers(c *gin.Context) {
 		return
 	}
 
-	// Kết nối Redis
 	rdb, err := config.ConnectRedis()
 	if err != nil {
 		log.Printf("Không thể kết nối Redis: %v", err)
@@ -81,9 +79,8 @@ func (u UserController) GetUsers(c *gin.Context) {
 
 	var allUsers []models.User
 
-	// Kiểm tra cache
 	if err := services.GetFromRedis(config.Ctx, rdb, cacheKey, &allUsers); err != nil || len(allUsers) == 0 {
-		// Nếu không có dữ liệu trong cache, truy vấn từ DB
+
 		query := u.DB.Preload("Banks").Preload("Children")
 
 		if currentUserRole == 3 {
@@ -103,7 +100,6 @@ func (u UserController) GetUsers(c *gin.Context) {
 			return
 		}
 
-		// Lưu dữ liệu vào Redis
 		if err := services.SetToRedis(config.Ctx, rdb, cacheKey, allUsers, 10*time.Minute); err != nil {
 			log.Printf("Lỗi khi lưu danh sách người dùng vào Redis: %v", err)
 		}
@@ -111,7 +107,7 @@ func (u UserController) GetUsers(c *gin.Context) {
 
 	var filteredUsers []models.User
 	for _, user := range allUsers {
-		// Lọc theo status
+
 		if statusStr != "" {
 			status, _ := strconv.Atoi(statusStr)
 			if user.Status != status {
@@ -119,14 +115,12 @@ func (u UserController) GetUsers(c *gin.Context) {
 			}
 		}
 
-		// Lọc theo name
 		if name != "" && !strings.Contains(strings.ToLower(user.Name), strings.ToLower(name)) &&
 			!strings.Contains(strings.ToLower(user.PhoneNumber), strings.ToLower(name)) &&
 			!strings.Contains(strings.ToLower(user.Email), strings.ToLower(name)) {
 			continue
 		}
 
-		// Lọc theo role
 		if roleStr != "" {
 			role, _ := strconv.Atoi(roleStr)
 			if user.Role != role {
@@ -136,10 +130,9 @@ func (u UserController) GetUsers(c *gin.Context) {
 
 		filteredUsers = append(filteredUsers, user)
 	}
-	// Lọc và chuẩn bị response
+
 	var userResponses []dto.UserResponse
 	for _, user := range filteredUsers {
-
 		if currentUserRole == 1 && user.Role == 3 {
 			continue
 		}
@@ -208,7 +201,6 @@ func (u UserController) GetUsers(c *gin.Context) {
 		})
 	}
 
-	// Sắp xếp và phân trang
 	sort.Slice(userResponses, func(i, j int) bool {
 		return userResponses[i].ID < userResponses[j].ID
 	})
@@ -327,11 +319,11 @@ func (u *UserController) CreateUser(c *gin.Context) {
 	}
 }
 
-func (u UserController) GetUserByID(c *gin.Context) {
+func (u UserController) GetUserDetailByID(c *gin.Context) {
 	var user models.User
 	id := c.Param("id")
 
-	if err := u.DB.First(&user, id).Error; err != nil {
+	if err := u.DB.Preload("Banks").First(&user, id).Error; err != nil {
 		response.NotFound(c)
 		return
 	}
@@ -352,9 +344,13 @@ func (u UserController) GetUserByID(c *gin.Context) {
 		IsVerified:  user.IsVerified,
 		PhoneNumber: user.PhoneNumber,
 		Role:        user.Role,
+		UpdatedAt:   user.UpdatedAt,
+		CreatedAt:   user.CreatedAt,
 		Avatar:      user.Avatar,
 		Banks:       banks,
 		Status:      user.Status,
+		AdminId:     user.AdminId,
+		Amount:      user.Amount,
 	}
 
 	response.Success(c, userResponse)
