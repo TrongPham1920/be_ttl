@@ -8,14 +8,14 @@ import (
 	"net/url"
 	"new/config"
 	"new/dto"
+	"new/models"
 	"new/response"
 	"new/services"
+	"new/services/notification"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"new/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -684,6 +684,16 @@ func UpdateSalaryStatus(c *gin.Context) {
 		response.ServerError(c)
 		return
 	}
+	// Gửi thông báo đến nhân viên
+	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
+	message := fmt.Sprintf("Trạng thái lương của bạn đã được cập nhật thành: %v", req.Status)
+	description := fmt.Sprintf(
+		`Chào %s,
+		Bảng lương của bạn đã được cập nhật trạng thái: %s.
+		Vui lòng đăng nhập hệ thống để kiểm tra chi tiết.`,
+		user.Name,
+	)
+	_ = notifyService.NotifyUser(userSalary.UserID, message, description)
 
 	response.Success(c, gin.H{
 		"salaryId": req.SalaryID,

@@ -309,8 +309,7 @@ func ConfirmWithdrawalHistory(c *gin.Context) {
 	} else if input.Status == "2" {
 		message := "Yêu cầu rút tiền của bạn đã bị từ chối"
 		description := fmt.Sprintf(`Yêu cầu rút tiền của bạn đã bị từ chối vào lúc %s.
-	
-	Lý do: %s`,
+	    Lý do: %s`,
 			time.Now().Format("15:04:05 ngày 02/01/2006"),
 			input.Reason,
 		)
