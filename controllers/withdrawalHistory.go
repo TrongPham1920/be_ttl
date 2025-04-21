@@ -96,10 +96,16 @@ func CreateWithdrawalHistory(c *gin.Context) {
 
 	message := fmt.Sprintf("Bạn có yêu cầu rút tiền từ người dùng #%d với số tiền %.2f", withdrawal.UserID, withdrawal.Amount)
 	description := fmt.Sprintf(
-		"Yêu cầu rút tiền vừa được tạo bởi người dùng có %d\n\nHọ tên: %s\nSố điện thoại: %s\nSố tiền yêu cầu rút: %.0f VNĐ\nThời gian tạo yêu cầu: %s\n\nVui lòng truy cập hệ thống để kiểm tra và xử lý yêu cầu này kịp thời.",
+		`Yêu cầu rút tiền vừa được tạo bởi người dùng # %d
+	     Họ tên: %s
+	     Số điện thoại: %s
+	     Số tiền yêu cầu rút: %.0f VNĐ
+	     Thời gian tạo yêu cầu: %s
+	     Vui lòng truy cập hệ thống để kiểm tra và xử lý yêu cầu này kịp thời.`,
+		withdrawal.UserID,
 		user.Name,
 		user.PhoneNumber,
-		withdrawal.Amount,
+		float64(withdrawal.Amount),
 		time.Now().Format("15:04:05 ngày 02/01/2006"),
 	)
 
@@ -292,19 +298,19 @@ func ConfirmWithdrawalHistory(c *gin.Context) {
 
 	// Gửi thông báo cho người dùng
 	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
-
 	if input.Status == "1" {
 		message := "Yêu cầu rút tiền của bạn đã được duyệt"
-		description := fmt.Sprintf(
-			"Yêu cầu rút tiền số tiền %.0f VNĐ của bạn đã được duyệt vào lúc %s.",
-			withdrawal.Amount,
+		description := fmt.Sprintf(`Yêu cầu rút tiền số tiền %s của bạn đã được duyệt vào lúc %s.`,
+			float64(withdrawal.Amount),
 			time.Now().Format("15:04:05 ngày 02/01/2006"),
 		)
 		_ = notifyService.NotifyUser(user.ID, message, description)
+
 	} else if input.Status == "2" {
 		message := "Yêu cầu rút tiền của bạn đã bị từ chối"
-		description := fmt.Sprintf(
-			"Yêu cầu rút tiền của bạn đã bị từ chối vào lúc %s.\nLý do: %s",
+		description := fmt.Sprintf(`Yêu cầu rút tiền của bạn đã bị từ chối vào lúc %s.
+	
+	Lý do: %s`,
 			time.Now().Format("15:04:05 ngày 02/01/2006"),
 			input.Reason,
 		)
