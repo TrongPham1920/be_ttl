@@ -8,14 +8,14 @@ import (
 	"net/url"
 	"new/config"
 	"new/dto"
+	"new/models"
 	"new/response"
 	"new/services"
+	"new/services/notification"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"new/models"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -684,6 +684,20 @@ func UpdateSalaryStatus(c *gin.Context) {
 		response.ServerError(c)
 		return
 	}
+	// Gửi thông báo đến nhân viên
+	// Gửi thông báo đến nhân viên
+	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
+
+	var message, description string
+	if req.Status {
+		message = fmt.Sprintf("Bảng lương #%d đã được thanh toán", req.SalaryID)
+		description = fmt.Sprintf("Chào %s,\n\nBạn đã được thanh toán lương. Vui lòng kiểm tra hệ thống để xem chi tiết.", user.Name)
+	} else {
+		message = fmt.Sprintf("Bảng lương #%d không được duyệt", req.SalaryID)
+		description = fmt.Sprintf("Chào %s,\n\nBảng lương của bạn hiện tại chưa được duyệt. Vui lòng liên hệ quản lý để biết thêm chi tiết.", user.Name)
+	}
+
+	_ = notifyService.NotifyUser(userSalary.UserID, message, description)
 
 	response.Success(c, gin.H{
 		"salaryId": req.SalaryID,

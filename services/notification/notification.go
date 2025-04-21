@@ -15,6 +15,7 @@ type NotifyService struct {
 func NewNotifyService() *NotifyService {
 	return &NotifyService{}
 }
+
 func NewNotifyServiceWithMelody(m *melody.Melody) *NotifyService {
 	return &NotifyService{
 		melodyService: NewMelodyService(m),
@@ -39,8 +40,8 @@ func (s *MelodyService) SendMessage(message string, userID uint) error {
 	}
 
 	return s.m.BroadcastFilter([]byte(message), func(session *melody.Session) bool {
-		if sessionUserID, exists := session.Get("userID"); exists {
-			return sessionUserID == fmt.Sprintf("%d", userID)
+		if userIDStr, exists := session.Get("userID"); exists {
+			return userIDStr == fmt.Sprintf("%d", userID)
 		}
 		return false
 	})

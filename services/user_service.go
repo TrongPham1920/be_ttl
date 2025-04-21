@@ -200,7 +200,7 @@ func (s *UserService) UpdateUserAmounts(ctx context.Context, notificationService
 func (s *UserService) RegisterObserver(session *melody.Session, userID uint) {
 	observer := NewMelodyObserver(session, userID)
 	s.observers[userID] = append(s.observers[userID], observer)
-	s.logger.Info("Người quan sát đã đăng ký cho userID: %d", userID)
+
 }
 
 func (s *UserService) RemoveObserver(session *melody.Session, userID uint) {
@@ -211,7 +211,7 @@ func (s *UserService) RemoveObserver(session *melody.Session, userID uint) {
 			break
 		}
 	}
-	s.logger.Info("Đã xóa người quan sát cho userID: %d", userID)
+
 }
 
 func (s *UserService) GetObservers(userID uint) []NotificationObserver {
