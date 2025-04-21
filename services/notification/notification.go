@@ -9,10 +9,16 @@ import (
 )
 
 type NotifyService struct {
+	melodyService *MelodyService
 }
 
 func NewNotifyService() *NotifyService {
 	return &NotifyService{}
+}
+func NewNotifyServiceWithMelody(m *melody.Melody) *NotifyService {
+	return &NotifyService{
+		melodyService: NewMelodyService(m),
+	}
 }
 
 type Service interface {
@@ -27,11 +33,17 @@ func NewMelodyService(m *melody.Melody) *MelodyService {
 	return &MelodyService{m: m}
 }
 
-func (s *MelodyService) SendMessage(message string) error {
+func (s *MelodyService) SendMessage(message string, userID uint) error {
 	if s.m == nil {
 		return fmt.Errorf("melody instance is nil")
 	}
-	return s.m.Broadcast([]byte(message))
+
+	return s.m.BroadcastFilter([]byte(message), func(session *melody.Session) bool {
+		if sessionUserID, exists := session.Get("userID"); exists {
+			return sessionUserID == fmt.Sprintf("%d", userID)
+		}
+		return false
+	})
 }
 
 // func (s *MelodyService) SendMessage(message string, userID *uint) error {
@@ -64,9 +76,12 @@ func (s *NotifyService) CreateNotification(userID uint, message, description str
 	return nil
 }
 func (s *NotifyService) NotifyUser(userID uint, message string, description string) error {
-
 	if err := s.CreateNotification(userID, message, description); err != nil {
 		return err
+	}
+
+	if s.melodyService != nil {
+		_ = s.melodyService.SendMessage(message, userID)
 	}
 
 	return nil

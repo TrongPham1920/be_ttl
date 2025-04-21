@@ -94,6 +94,13 @@ func CreateWithdrawalHistory(c *gin.Context) {
 		response.ServerError(c)
 		return
 	}
+	// Gửi thông báo đến admin
+	notifyService := notification.NewNotifyService()
+
+	message := fmt.Sprintf("Bạn có yêu cầu rút tiền từ người dùng #%d với số tiền %.2f", withdrawal.UserID, withdrawal.Amount)
+	description := fmt.Sprintf("Yêu cầu này được tạo lúc %s, vui lòng kiểm tra!")
+
+	_ = notifyService.NotifyUser(1, message, description)
 
 	response.Success(c, withdrawal)
 }
@@ -211,15 +218,7 @@ func GetWithdrawalHistory(c *gin.Context) {
 	} else {
 		responses = responses[start:end]
 	}
-	notifyService := notification.NewNotifyService()
 
-	for _, w := range withdrawals {
-		if w.Status == "pending" {
-			message := fmt.Sprintf("Bạn có yêu cầu rút tiền từ người dùng #%d với số tiền %.2f", w.UserID, w.Amount)
-			description := fmt.Sprintf("Yêu cầu được tạo lúc %s", w.CreatedAt.Format("02/01/2006 15:04"))
-			_ = notifyService.NotifyUser(1, message, description)
-		}
-	}
 	response.SuccessWithPagination(c, responses, page, limit, total)
 }
 

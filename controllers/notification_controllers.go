@@ -5,7 +5,8 @@ import (
 	"new/models"
 	"new/response"
 	"new/services"
-	"new/services/notification"
+
+	// "new/services/notification"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -24,23 +25,23 @@ func NewNotificationController(userService *services.UserService, melody *melody
 	}
 }
 
-func (ctrl *NotificationController) NotifyAll(c *gin.Context) {
-	var req struct {
-		Message string `json:"message" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&req); err != nil {
-		response.BadRequest(c, "Tin nhắn là bắt buộc")
-		return
-	}
+// func (ctrl *NotificationController) NotifyAll(c *gin.Context) {
+// 	var req struct {
+// 		Message string `json:"message" binding:"required"`
+// 	}
+// 	if err := c.ShouldBindJSON(&req); err != nil {
+// 		response.BadRequest(c, "Tin nhắn là bắt buộc")
+// 		return
+// 	}
 
-	notificationService := notification.NewMelodyService(ctrl.melody)
-	if err := notificationService.SendMessage(req.Message); err != nil {
-		response.ServerError(c)
-		return
-	}
+// 	notificationService := notification.NewMelodyService(ctrl.melody)
+// 	if err := notificationService.SendMessage(req.Message); err != nil {
+// 		response.ServerError(c)
+// 		return
+// 	}
 
-	response.Success(c, req.Message)
-}
+// 	response.Success(c, req.Message)
+// }
 
 // func (ctrl *NotificationController) NotifyUser(c *gin.Context) {
 // 	userIDStr := c.Param("userID")
