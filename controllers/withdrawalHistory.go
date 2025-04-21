@@ -90,17 +90,18 @@ func CreateWithdrawalHistory(c *gin.Context) {
 		Amount: input.Amount,
 	}
 
-	if err := config.DB.Create(&withdrawal).Error; err != nil {
-		response.ServerError(c)
-		return
-	}
 	// Gửi thông báo đến admin
-	notifyService := notification.NewNotifyService()
+	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
 
 	message := fmt.Sprintf("Bạn có yêu cầu rút tiền từ người dùng #%d với số tiền %.2f", withdrawal.UserID, withdrawal.Amount)
 	description := fmt.Sprintf("Yêu cầu này được tạo lúc %s, vui lòng kiểm tra!")
 
 	_ = notifyService.NotifyUser(1, message, description)
+
+	if err := config.DB.Create(&withdrawal).Error; err != nil {
+		response.ServerError(c)
+		return
+	}
 
 	response.Success(c, withdrawal)
 }

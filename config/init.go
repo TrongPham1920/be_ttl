@@ -11,6 +11,8 @@ import (
 
 var RedisClient *redis.Client
 
+var MelodyInstance *melody.Melody
+
 func InitApp() (*gin.Engine, *melody.Melody, error) {
 	router := gin.Default()
 
@@ -36,6 +38,7 @@ func InitApp() (*gin.Engine, *melody.Melody, error) {
 	}
 
 	m := melody.New()
+	MelodyInstance = m
 
 	return router, m, nil
 }
