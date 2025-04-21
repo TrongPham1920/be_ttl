@@ -10,6 +10,7 @@ import (
 	"new/models"
 	"new/response"
 	"new/services"
+	"new/services/notification"
 	"sort"
 	"strconv"
 	"strings"
@@ -448,6 +449,14 @@ func CreateOrder(c *gin.Context) {
 			holidayPrice += holiday.Price
 		}
 	}
+	// Gửi thông báo cho người dùng sau khi tạo đơn hàng
+	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
+	message := fmt.Sprintf("Bạn đã tạo một đơn hàng với mã #%d", order.ID)
+	description := fmt.Sprintf("Đơn hàng #%d của bạn đã được tạo thành công. Thời gian nhận phòng: %s, Thời gian trả phòng: %s.",
+		order.ID, order.CheckInDate, order.CheckOutDate)
+
+	_ = notifyService.NotifyUser(*userId, message, description)
+
 	order.HolidayPrice = float64(price*holidayPrice) / 100
 
 	numDaysToCheckIn := int(checkInDate.Sub(order.CreatedAt).Hours() / 24)
@@ -741,6 +750,17 @@ func ChangeOrderStatus(c *gin.Context) {
 				response.ServerError(c)
 				return
 			}
+			if order.Status == 1 {
+				// Gửi thông báo cho người dùng nếu đơn hàng được cập nhật thành công
+				notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
+				message := fmt.Sprintf("Đơn hàng #%d của bạn đã được cập nhật thành công", order.ID)
+				description := fmt.Sprintf("Đơn hàng #%d của bạn đã được duyệt thành công vào lúc %s.",
+					order.ID, time.Now().Format("15:04:05 ngày 02/01/2006"))
+				if order.UserID != nil {
+					_ = notifyService.NotifyUser(*order.UserID, message, description)
+				}
+			}
+
 		}
 
 	}

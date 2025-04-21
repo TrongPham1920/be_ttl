@@ -685,14 +685,18 @@ func UpdateSalaryStatus(c *gin.Context) {
 		return
 	}
 	// Gửi thông báo đến nhân viên
+	// Gửi thông báo đến nhân viên
 	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
-	message := fmt.Sprintf("Trạng thái lương của bạn đã được cập nhật thành: %v", req.Status)
-	description := fmt.Sprintf(
-		`Chào %s,
-		Bảng lương của bạn đã được cập nhật trạng thái: %s.
-		Vui lòng đăng nhập hệ thống để kiểm tra chi tiết.`,
-		user.Name,
-	)
+
+	var message, description string
+	if req.Status {
+		message = fmt.Sprintf("Bảng lương #%d đã được thanh toán", req.SalaryID)
+		description = fmt.Sprintf("Chào %s,\n\nBạn đã được thanh toán lương. Vui lòng kiểm tra hệ thống để xem chi tiết.", user.Name)
+	} else {
+		message = fmt.Sprintf("Bảng lương #%d không được duyệt", req.SalaryID)
+		description = fmt.Sprintf("Chào %s,\n\nBảng lương của bạn hiện tại chưa được duyệt. Vui lòng liên hệ quản lý để biết thêm chi tiết.", user.Name)
+	}
+
 	_ = notifyService.NotifyUser(userSalary.UserID, message, description)
 
 	response.Success(c, gin.H{
