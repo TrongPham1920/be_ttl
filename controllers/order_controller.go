@@ -758,36 +758,32 @@ func ChangeOrderStatus(c *gin.Context) {
 	order.Status = req.Status
 	order.UpdatedAt = time.Now()
 
-	if err := config.DB.Save(&order).Error; err != nil {
-		response.ServerError(c)
-		return
-	}
+	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
+	currentTime := time.Now().Format("15:04:05 ngày 02/01/2006")
+	var message, description string
 
 	if req.Status == 1 {
-		notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
-		currentTime := time.Now().Format("15:04:05 ngày 02/01/2006")
-
-		// Thông báo và email cho người dùng
 		if order.UserID != nil {
-			// Gửi thông báo cho người dùng
-			message := fmt.Sprintf("Đơn hàng #%d của bạn đã được xác nhận thành công", order.ID)
-			description := fmt.Sprintf("Đơn hàng #%d đã được xác nhận vào lúc %s. Thời gian nhận phòng: %s, Thời gian trả phòng: %s.",
+			message = fmt.Sprintf("Đơn hàng #%d của bạn đã được xác nhận thành công", order.ID)
+			description = fmt.Sprintf("Đơn hàng #%d đã được xác nhận vào lúc %s. Thời gian nhận phòng: %s, Thời gian trả phòng: %s.",
 				order.ID, currentTime, order.CheckInDate, order.CheckOutDate)
 			if err := notifyService.NotifyUser(*order.UserID, message, description); err != nil {
 				fmt.Printf("Gửi thông báo cho user %d thất bại: %v\n", *order.UserID, err)
 			}
-
-			// Gửi email cho người dùng
 			var user models.User
 			if err := config.DB.Where("id = ?", *order.UserID).First(&user).Error; err == nil && user.Email != "" {
 				if err := services.SendOrderEmail(user.Email, order.ID, order.TotalPrice, order.CheckInDate, order.CheckOutDate); err != nil {
-					fmt.Printf("Gửi email thành công", *order.UserID, err)
+					fmt.Printf("Gửi email cho user %d thất bại: %v\n", *order.UserID, err)
+				} else {
+					fmt.Printf("Gửi email thành công cho user %d\n", *order.UserID)
 				}
 			}
 		} else if order.GuestEmail != "" {
 			// Gửi email cho khách (nếu không có UserID nhưng có GuestEmail)
 			if err := services.SendOrderEmail(order.GuestEmail, order.ID, order.TotalPrice, order.CheckInDate, order.CheckOutDate); err != nil {
-				fmt.Printf("Gửi email thành công", order.GuestEmail, err)
+				fmt.Printf("Gửi email cho guest %s thất bại: %v\n", order.GuestEmail, err)
+			} else {
+				fmt.Printf("Gửi email thành công cho guest %s\n", order.GuestEmail)
 			}
 		}
 
@@ -798,6 +794,45 @@ func ChangeOrderStatus(c *gin.Context) {
 		if err := notifyService.NotifyUser(order.Accommodation.UserID, ownerMessage, ownerDescription); err != nil {
 			fmt.Printf("Gửi thông báo cho owner %d thất bại: %v\n", order.Accommodation.UserID, err)
 		}
+	} else if req.Status == 2 {
+		// Thông báo và email khi hủy đơn
+		var message, description string
+		if order.UserID != nil {
+			// Gửi thông báo cho người dùng
+			message = fmt.Sprintf("Đơn hàng #%d của bạn đã bị hủy", order.ID)
+			description = fmt.Sprintf("Đơn hàng #%d đã bị hủy vào lúc %s.", order.ID, currentTime)
+			if err := notifyService.NotifyUser(*order.UserID, message, description); err != nil {
+				fmt.Printf("Gửi thông báo cho user %d thất bại: %v\n", *order.UserID, err)
+			}
+
+			// Gửi email cho người dùng
+			var user models.User
+			if err := config.DB.Where("id = ?", *order.UserID).First(&user).Error; err == nil && user.Email != "" {
+				if err := services.SendOrderCancelEmail(user.Email, order.ID, order.TotalPrice, order.CheckInDate, order.CheckOutDate); err != nil {
+					fmt.Printf("Gửi email cho user %d thất bại: %v\n", *order.UserID, err)
+				} else {
+					fmt.Printf("Gửi email thành công cho user %d\n", *order.UserID)
+				}
+			}
+		} else if order.GuestEmail != "" {
+			// Gửi email cho khách (nếu không có UserID nhưng có GuestEmail)
+			if err := services.SendOrderCancelEmail(order.GuestEmail, order.ID, order.TotalPrice, order.CheckInDate, order.CheckOutDate); err != nil {
+				fmt.Printf("Gửi email cho guest %s thất bại: %v\n", order.GuestEmail, err)
+			} else {
+				fmt.Printf("Gửi email thành công cho guest %s\n", order.GuestEmail)
+			}
+		}
+
+		// Thông báo cho chủ sở hữu
+		ownerMessage := fmt.Sprintf("Đơn hàng #%d đã bị hủy", order.ID)
+		ownerDescription := fmt.Sprintf("Đơn hàng #%d đã bị hủy vào lúc %s.", order.ID, currentTime)
+		if err := notifyService.NotifyUser(order.Accommodation.UserID, ownerMessage, ownerDescription); err != nil {
+			fmt.Printf("Gửi thông báo cho owner %d thất bại: %v\n", order.Accommodation.UserID, err)
+		}
+	}
+	if err := config.DB.Save(&order).Error; err != nil {
+		response.ServerError(c)
+		return
 	}
 
 	rdb, redisErr := config.ConnectRedis()
