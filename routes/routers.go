@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"new/config"
 	"new/controllers"
+	"new/middleware"
 	middlewares "new/middleware"
 	"new/services" // Thêm import package services
 
@@ -18,7 +19,7 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine, db *gorm.DB, redisCli *redis.Client, cld *cloudinary.Cloudinary, m *melody.Melody, userService *services.UserService) {
-
+	router.Use(middleware.SessionMiddleware())
 	userController := controllers.NewUserController(db, redisCli)
 	notificationCtrl := controllers.NewNotificationController(userService, m)
 
