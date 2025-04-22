@@ -451,11 +451,11 @@ func CreateOrder(c *gin.Context) {
 	}
 	// Gửi thông báo cho người dùng sau khi tạo đơn hàng
 	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
-	message := fmt.Sprintf("Bạn đã tạo một đơn hàng với mã #%d", order.ID)
-	description := fmt.Sprintf("Đơn hàng #%d của bạn đã được tạo thành công. Thời gian nhận phòng: %s, Thời gian trả phòng: %s.",
-		order.ID, order.CheckInDate, order.CheckOutDate)
+	message := fmt.Sprintf("Bạn đã tạo một đơn hàng thành công", order.ID)
+	description := fmt.Sprintf("Đơn hàng của bạn đã được tạo thành công. Thời gian nhận phòng: %s, Thời gian trả phòng: %s.",
+		checkInDate.Format("02/01/2006"), checkOutDate.Format("02/01/2006"))
 
-	_ = notifyService.NotifyUser(*userId, message, description)
+	_ = notifyService.NotifyUser(accommodation.UserID, message, description)
 
 	order.HolidayPrice = float64(price*holidayPrice) / 100
 
@@ -750,16 +750,6 @@ func ChangeOrderStatus(c *gin.Context) {
 				response.ServerError(c)
 				return
 			}
-			if order.Status == 1 {
-				// Gửi thông báo cho người dùng nếu đơn hàng được cập nhật thành công
-				notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
-				message := fmt.Sprintf("Đơn hàng #%d của bạn đã được cập nhật thành công", order.ID)
-				description := fmt.Sprintf("Đơn hàng #%d của bạn đã được duyệt thành công vào lúc %s.",
-					order.ID, time.Now().Format("15:04:05 ngày 02/01/2006"))
-				if order.UserID != nil {
-					_ = notifyService.NotifyUser(*order.UserID, message, description)
-				}
-			}
 
 		}
 
@@ -771,6 +761,43 @@ func ChangeOrderStatus(c *gin.Context) {
 	if err := config.DB.Save(&order).Error; err != nil {
 		response.ServerError(c)
 		return
+	}
+
+	if req.Status == 1 {
+		notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
+		currentTime := time.Now().Format("15:04:05 ngày 02/01/2006")
+
+		// Thông báo và email cho người dùng
+		if order.UserID != nil {
+			// Gửi thông báo cho người dùng
+			message := fmt.Sprintf("Đơn hàng #%d của bạn đã được xác nhận thành công", order.ID)
+			description := fmt.Sprintf("Đơn hàng #%d đã được xác nhận vào lúc %s. Thời gian nhận phòng: %s, Thời gian trả phòng: %s.",
+				order.ID, currentTime, order.CheckInDate, order.CheckOutDate)
+			if err := notifyService.NotifyUser(*order.UserID, message, description); err != nil {
+				fmt.Printf("Gửi thông báo cho user %d thất bại: %v\n", *order.UserID, err)
+			}
+
+			// Gửi email cho người dùng
+			var user models.User
+			if err := config.DB.Where("id = ?", *order.UserID).First(&user).Error; err == nil && user.Email != "" {
+				if err := services.SendOrderEmail(user.Email, order.ID, order.TotalPrice, order.CheckInDate, order.CheckOutDate); err != nil {
+					fmt.Printf("Gửi email thành công", *order.UserID, err)
+				}
+			}
+		} else if order.GuestEmail != "" {
+			// Gửi email cho khách (nếu không có UserID nhưng có GuestEmail)
+			if err := services.SendOrderEmail(order.GuestEmail, order.ID, order.TotalPrice, order.CheckInDate, order.CheckOutDate); err != nil {
+				fmt.Printf("Gửi email thành công", order.GuestEmail, err)
+			}
+		}
+
+		// Thông báo cho chủ sở hữu
+		ownerMessage := fmt.Sprintf("Đơn hàng #%d đã được xác nhận", order.ID)
+		ownerDescription := fmt.Sprintf("Đơn hàng #%d đã được xác nhận vào lúc %s. Thời gian nhận phòng: %s, Thời gian trả phòng: %s.",
+			order.ID, currentTime, order.CheckInDate, order.CheckOutDate)
+		if err := notifyService.NotifyUser(order.Accommodation.UserID, ownerMessage, ownerDescription); err != nil {
+			fmt.Printf("Gửi thông báo cho owner %d thất bại: %v\n", order.Accommodation.UserID, err)
+		}
 	}
 
 	rdb, redisErr := config.ConnectRedis()
