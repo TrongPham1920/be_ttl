@@ -449,13 +449,6 @@ func CreateOrder(c *gin.Context) {
 			holidayPrice += holiday.Price
 		}
 	}
-	// Gửi thông báo cho người dùng sau khi tạo đơn hàng
-	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
-	message := fmt.Sprintf("Bạn đã tạo một đơn hàng thành công", order.ID)
-	description := fmt.Sprintf("Đơn hàng của bạn đã được tạo thành công. Thời gian nhận phòng: %s, Thời gian trả phòng: %s.",
-		checkInDate.Format("02/01/2006"), checkOutDate.Format("02/01/2006"))
-
-	_ = notifyService.NotifyUser(accommodation.UserID, message, description)
 
 	order.HolidayPrice = float64(price*holidayPrice) / 100
 
@@ -560,6 +553,14 @@ func CreateOrder(c *gin.Context) {
 			fmt.Println("Gửi email không thành công:", err)
 		}
 	}
+
+	// Gửi thông báo cho người dùng sau khi tạo đơn hàng
+	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
+	message := fmt.Sprintf("Bạn có đơn hàng mới #%d", order.ID)
+	description := fmt.Sprintf("Đơn hàng của bạn đã được tạo thành công. Thời gian nhận phòng: %s, Thời gian trả phòng: %s.",
+		checkInDate.Format("02/01/2006"), checkOutDate.Format("02/01/2006"))
+
+	_ = notifyService.NotifyUser(accommodation.UserID, message, description)
 
 	//Xóa redis
 	rdb, redisErr := config.ConnectRedis()

@@ -94,7 +94,7 @@ func CreateWithdrawalHistory(c *gin.Context) {
 	// Gửi thông báo đến admin
 	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
 
-	message := fmt.Sprintf("Bạn có yêu cầu rút tiền từ người dùng #%d với số tiền %.2f", withdrawal.UserID, withdrawal.Amount)
+	message := fmt.Sprintf("Bạn có yêu cầu rút tiền từ người dùng #%d với số tiền #%d", withdrawal.UserID, withdrawal.Amount)
 	description := fmt.Sprintf(
 		`Yêu cầu rút tiền vừa được tạo bởi người dùng # %d
 	     Họ tên: %s
@@ -300,8 +300,8 @@ func ConfirmWithdrawalHistory(c *gin.Context) {
 	notifyService := notification.NewNotifyServiceWithMelody(config.MelodyInstance)
 	if input.Status == "1" {
 		message := "Yêu cầu rút tiền của bạn đã được duyệt"
-		description := fmt.Sprintf(`Yêu cầu rút tiền số tiền %s của bạn đã được duyệt vào lúc %s.`,
-			float64(withdrawal.Amount),
+		description := fmt.Sprintf(`Yêu cầu rút tiền số tiền %d của bạn đã được duyệt vào lúc %s.`,
+			withdrawal.Amount,
 			time.Now().Format("15:04:05 ngày 02/01/2006"),
 		)
 		_ = notifyService.NotifyUser(user.ID, message, description)
