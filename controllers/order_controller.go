@@ -774,16 +774,12 @@ func ChangeOrderStatus(c *gin.Context) {
 			if err := config.DB.Where("id = ?", *order.UserID).First(&user).Error; err == nil && user.Email != "" {
 				if err := services.SendOrderEmail(user.Email, order.ID, order.TotalPrice, order.CheckInDate, order.CheckOutDate); err != nil {
 					fmt.Printf("Gửi email cho user %d thất bại: %v\n", *order.UserID, err)
-				} else {
-					fmt.Printf("Gửi email thành công cho user %d\n", *order.UserID)
 				}
 			}
 		} else if order.GuestEmail != "" {
 			// Gửi email cho khách (nếu không có UserID nhưng có GuestEmail)
 			if err := services.SendOrderEmail(order.GuestEmail, order.ID, order.TotalPrice, order.CheckInDate, order.CheckOutDate); err != nil {
 				fmt.Printf("Gửi email cho guest %s thất bại: %v\n", order.GuestEmail, err)
-			} else {
-				fmt.Printf("Gửi email thành công cho guest %s\n", order.GuestEmail)
 			}
 		}
 
@@ -810,16 +806,12 @@ func ChangeOrderStatus(c *gin.Context) {
 			if err := config.DB.Where("id = ?", *order.UserID).First(&user).Error; err == nil && user.Email != "" {
 				if err := services.SendOrderCancelEmail(user.Email, order.ID, order.TotalPrice, order.CheckInDate, order.CheckOutDate); err != nil {
 					fmt.Printf("Gửi email cho user %d thất bại: %v\n", *order.UserID, err)
-				} else {
-					fmt.Printf("Gửi email thành công cho user %d\n", *order.UserID)
 				}
 			}
 		} else if order.GuestEmail != "" {
 			// Gửi email cho khách (nếu không có UserID nhưng có GuestEmail)
 			if err := services.SendOrderCancelEmail(order.GuestEmail, order.ID, order.TotalPrice, order.CheckInDate, order.CheckOutDate); err != nil {
 				fmt.Printf("Gửi email cho guest %s thất bại: %v\n", order.GuestEmail, err)
-			} else {
-				fmt.Printf("Gửi email thành công cho guest %s\n", order.GuestEmail)
 			}
 		}
 
