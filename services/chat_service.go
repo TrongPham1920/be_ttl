@@ -4,12 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"log"
+	"new/config"
+	"new/dto"
+	"new/models"
 	"strconv"
+	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
+
+type finalresults struct {
+	ID int `json:"id"`
+}
 
 func GetCacheKey(userID int, sessionID string) string {
 	if userID > 0 {
@@ -84,12 +92,35 @@ func HandleUserMessageWS(
 		results = results[:3]
 	}
 
-	hotelJSON, err := json.Marshal(results)
+	var summaries []dto.HotelSummary
+	for _, r := range results {
+		summary := dto.HotelSummary{
+			ID:     r.ID,
+			Name:   r.Name,
+			Price:  r.Price,
+			Num:    r.Num,
+			Avatar: r.Avatar,
+		}
+		summaries = append(summaries, summary)
+	}
+	hotelJSON, err := json.Marshal(summaries)
+	log.Println("summmmmmmmmm", summaries)
 	if err != nil {
-		responses = append(responses, []byte("⚠️ Có lỗi khi gửi kết quả khách sạn."))
+		responses = append(responses, []byte("Có lỗi khi gửi kết quả khách sạn."))
 	} else {
 		responses = append(responses, hotelJSON)
 	}
 
 	return responses
+}
+
+func SaveChatHistoryToDB(userID int, sender string, messageType string, content string) error {
+	chat := models.ChatHistory{
+		UserID:      userID,
+		Sender:      sender,
+		MessageType: messageType,
+		Content:     content,
+		CreatedAt:   time.Now(),
+	}
+	return config.DB.Create(&chat).Error
 }

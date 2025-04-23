@@ -7,7 +7,6 @@ import (
 	"strconv"
 
 	"new/config"
-	"new/models"
 
 	"new/routes"
 	"new/services"
@@ -22,9 +21,9 @@ func recreateUserTable() {
 	// 	panic("Failed to migrate tables: " + err.Error())
 	// }
 
-	if err := config.DB.AutoMigrate(&models.Notification{}); err != nil {
-		panic("Failed to migrate tables: " + err.Error())
-	}
+	// if err := config.DB.AutoMigrate(&models.ChatHistory{}); err != nil {
+	// 	panic("Failed to migrate tables: " + err.Error())
+	// }
 
 }
 
