@@ -269,15 +269,3 @@ func mapBenefitNamesToIDs(names []string) []int {
 	}
 	return benefitIDs
 }
-
-// Lưu lịch sử chat
-func SaveChatHistory(userId int, message string, sender string) error {
-	chat := models.ChatHistory{
-		UserID:  uint(userId),
-		Message: message,
-		Sender:  sender,
-	}
-
-	result := config.DB.Create(&chat)
-	return result.Error
-}
