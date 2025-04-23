@@ -191,7 +191,46 @@ func SendOrderEmail(email string, orderId uint, totalPrice float64, checkInDate 
 	err := smtp.SendMail(host+":"+port, auth, from, to, msg)
 	return err
 }
+func SendOrderCancelEmail(email string, orderId uint, totalPrice float64, checkInDate string, checkOutDate string) error {
+	from := "takieulong@gmail.com"
+	password := "audj brda qhbq lpxu"
 
+	host := "smtp.gmail.com"
+	port := "587"
+	to := []string{email}
+	subject := "Subject: Xác nhận hủy đơn hàng\n"
+
+	priceFormatted := formatCurrency(totalPrice)
+
+	body := fmt.Sprintf(`<!DOCTYPE html>
+	<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Hủy đơn hàng thành công</title>
+	</head>
+	<body>
+		<p>Xin chào,</p>
+		<p>Chúc mừng! Bạn đã hủy đơn hàng thành công.</p>
+		<p>Thông tin đơn hàng của bạn như sau:</p>
+		<ul>
+			<li>Mã đơn hàng: <strong>%d</strong></li>
+			<li>Ngày nhận phòng: <strong>%s</strong></li>
+			<li>Ngày trả phòng: <strong>%s</strong></li>
+			<li>Tổng giá trị đơn hàng: <strong>%s VND</strong></li>
+		</ul>
+		<p>Chúng tôi sẽ gửi cho bạn thông tin chi tiết về đơn hàng khi có sự thay đổi.</p>
+		<p>Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!</p>
+		<p>Xin cảm ơn,<br>Nhóm hỗ trợ</p>
+	</body>
+	</html>`, orderId, checkInDate, checkOutDate, priceFormatted)
+
+	msg := []byte("MIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n" + subject + "\n" + body)
+
+	auth := smtp.PlainAuth("", from, password, host)
+
+	err := smtp.SendMail(host+":"+port, auth, from, to, msg)
+	return err
+}
 func formatCurrency(amount float64) string {
 	return fmt.Sprintf("%0.2f", amount)
 }
