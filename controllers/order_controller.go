@@ -830,6 +830,7 @@ func ChangeOrderStatus(c *gin.Context) {
 			fmt.Printf("Gửi thông báo cho owner %d thất bại: %v\n", order.Accommodation.UserID, err)
 		}
 	}
+
 	if err := config.DB.Save(&order).Error; err != nil {
 		response.ServerError(c)
 		return
