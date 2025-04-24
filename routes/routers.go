@@ -8,7 +8,7 @@ import (
 	"new/controllers"
 	"new/middleware"
 	middlewares "new/middleware"
-	"new/services" // Thêm import package services
+	"new/services"
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"

@@ -41,7 +41,27 @@ type GPTHotelSearchParams struct {
 // =========================
 // GPT REQUEST
 // =========================
+func CheckForContactIntent(message string) (bool, string) {
+	lowerMsg := strings.ToLower(message)
+
+	keywords := []string{
+		"Liên hệ", "liên hệ", "lien he", "admin", "hỗ trợ", "gặp tư vấn", "hotline",
+	}
+
+	for _, keyword := range keywords {
+		if strings.Contains(lowerMsg, keyword) {
+			// Có thể customize message này
+			contactMsg := "Bạn có thể liên hệ với chúng tôi qua:\n📞 Hotline: 0123 456 789\n✉️ Email: TROTHALO@email.com"
+			return true, contactMsg
+		}
+	}
+	return false, ""
+}
+
 func ExtractSearchFiltersFromGPTWS(userMessage string) (*dto.SearchFilters, string, error) {
+	if ok, msg := CheckForContactIntent(userMessage); ok {
+		return nil, msg, nil
+	}
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		return nil, "", fmt.Errorf("API key không tồn tại")
