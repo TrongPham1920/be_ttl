@@ -509,7 +509,7 @@ func (u UserController) ChangeUserStatus(c *gin.Context) {
 		switch currentUserRole {
 		case 1:
 			_ = services.DeleteFromRedis(config.Ctx, rdb, "user:all")
-		case 3:
+		case 2:
 			adminCacheKey := fmt.Sprintf("users:role_3:admin_%d", currentUserID)
 			_ = services.DeleteFromRedis(config.Ctx, rdb, adminCacheKey)
 		}
