@@ -88,10 +88,6 @@ func HandleUserMessageWS(
 		return responses
 	}
 
-	if len(results) > 3 {
-		results = results[:3]
-	}
-
 	var summaries []dto.HotelSummary
 	for _, r := range results {
 		summary := dto.HotelSummary{
@@ -104,7 +100,6 @@ func HandleUserMessageWS(
 		summaries = append(summaries, summary)
 	}
 	hotelJSON, err := json.Marshal(summaries)
-	log.Println("summmmmmmmmm", summaries)
 	if err != nil {
 		responses = append(responses, []byte("Có lỗi khi gửi kết quả khách sạn."))
 	} else {
