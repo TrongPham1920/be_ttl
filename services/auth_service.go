@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"net/smtp"
 	"new/config"
@@ -44,7 +45,7 @@ func generateVerificationCode() (string, error) {
 
 func sendVerificationEmail(email string, token string) error {
 	from := "trothalovn@gmail.com"
-	password := "mvck fivk gjal rwf"
+	password := "guex rfam ujku zpwu"
 
 	host := "smtp.gmail.com"
 	port := "587"
@@ -83,7 +84,7 @@ func sendVerificationEmail(email string, token string) error {
 
 func sendcodeEmail(email string, token string) error {
 	from := "trothalovn@gmail.com"
-	password := "mvck fivk gjal rwf"
+	password := "guex rfam ujku zpwu"
 
 	host := "smtp.gmail.com"
 	port := "587"
@@ -117,7 +118,7 @@ func sendcodeEmail(email string, token string) error {
 
 func sendUserEmail(email string, phone string, pass string) error {
 	from := "trothalovn@gmail.com"
-	password := "mvck fivk gjal rwf"
+	password := "guex rfam ujku zpwu"
 
 	host := "smtp.gmail.com"
 	port := "587"
@@ -153,7 +154,7 @@ func sendUserEmail(email string, phone string, pass string) error {
 
 func SendOrderEmail(email string, orderId uint, totalPrice float64, checkInDate string, checkOutDate string) error {
 	from := "trothalovn@gmail.com"
-	password := "mvck fivk gjal rwf"
+	password := "guex rfam ujku zpwu"
 
 	host := "smtp.gmail.com"
 	port := "587"
@@ -189,11 +190,12 @@ func SendOrderEmail(email string, orderId uint, totalPrice float64, checkInDate 
 	auth := smtp.PlainAuth("", from, password, host)
 
 	err := smtp.SendMail(host+":"+port, auth, from, to, msg)
+	log.Println("Lỗi gửi email:", err)
 	return err
 }
 func SendOrderCancelEmail(email string, orderId uint, totalPrice float64, checkInDate string, checkOutDate string) error {
 	from := "trothalovn@gmail.com"
-	password := "mvck fivk gjal rwf"
+	password := "guex rfam ujku zpwu"
 
 	host := "smtp.gmail.com"
 	port := "587"
@@ -421,7 +423,7 @@ func ResetPass(user models.User) error {
 
 func sendNews(email string, title string, mess string) error {
 	from := "trothalovn@gmail.com"
-	password := "mvck fivk gjal rwf"
+	password := "guex rfam ujku zpwu"
 
 	host := "smtp.gmail.com"
 	port := "587"
@@ -594,7 +596,7 @@ func CheckUserEligibilityForDiscount(userID uint) bool {
 
 func SendPayEmail(email string, vat, vatLastMonth, totalVat int, qrCodeURL string) error {
 	from := "trothalovn@gmail.com"
-	password := "mvck fivk gjal rwf"
+	password := "guex rfam ujku zpwu"
 
 	host := "smtp.gmail.com"
 	port := "587"
