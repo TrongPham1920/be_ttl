@@ -44,17 +44,10 @@ func MergeFilters(old *dto.SearchFilters, new *dto.SearchFilters) *dto.SearchFil
 	// Gộp BenefitIDs
 	new.BenefitIDs = mergeUniqueInts(old.BenefitIDs, new.BenefitIDs)
 
-	//Xử lý case người dùng nhập lại PriceMax và PriceMin
-	if new.PriceMin != nil && old.PriceMax != nil && *new.PriceMin > *old.PriceMax {
+	new.PriceMin = maxIntPointer(new.PriceMin, old.PriceMin)
+	new.PriceMax = minIntPointer(new.PriceMax, old.PriceMax)
+	if new.PriceMin != nil && new.PriceMax != nil && *new.PriceMin > *new.PriceMax {
 		new.PriceMax = nil
-	} else {
-		new.PriceMax = orIntPointer(new.PriceMax, old.PriceMax)
-	}
-
-	if new.PriceMax != nil && old.PriceMin != nil && *new.PriceMax < *old.PriceMin {
-		new.PriceMin = nil
-	} else {
-		new.PriceMin = orIntPointer(new.PriceMin, old.PriceMin)
 	}
 	return new
 }
@@ -97,4 +90,30 @@ func mergeUniqueInts(a, b []int) []int {
 		}
 	}
 	return result
+}
+
+func maxIntPointer(a, b *int) *int {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	if *a > *b {
+		return a
+	}
+	return b
+}
+
+func minIntPointer(a, b *int) *int {
+	if a == nil {
+		return b
+	}
+	if b == nil {
+		return a
+	}
+	if *a < *b {
+		return a
+	}
+	return b
 }
