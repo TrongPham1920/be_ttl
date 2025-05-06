@@ -88,6 +88,11 @@ func HandleUserMessageWS(
 		return responses
 	}
 
+	if len(results) == 0 {
+		responses = append(responses, []byte("Không tìm thấy khách sạn phù hợp với yêu cầu hiện tại. Bạn vui lòng thử tìm lại với từ khóa khác hoặc nới lỏng tiêu chí lọc nhé."))
+		return responses
+	}
+	
 	var summaries []dto.HotelSummary
 	for _, r := range results {
 		summary := dto.HotelSummary{

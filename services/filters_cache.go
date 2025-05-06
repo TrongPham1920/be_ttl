@@ -47,7 +47,7 @@ func MergeFilters(old *dto.SearchFilters, new *dto.SearchFilters) *dto.SearchFil
 	new.PriceMin = maxIntPointer(new.PriceMin, old.PriceMin)
 	new.PriceMax = minIntPointer(new.PriceMax, old.PriceMax)
 	if new.PriceMin != nil && new.PriceMax != nil && *new.PriceMin > *new.PriceMax {
-		new.PriceMax = nil
+		new.PriceMin, new.PriceMax = new.PriceMax, new.PriceMin
 	}
 	return new
 }

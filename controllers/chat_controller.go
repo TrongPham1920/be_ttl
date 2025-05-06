@@ -94,7 +94,6 @@ func handleUserMessage(client *Client, message []byte, c *gin.Context, sessionId
 		log.Println("invalid user message format:", err)
 		return
 	}
-
 	_ = services.SaveChatHistoryToDB(client.UserID, "user", "text", inputMsg.Text)
 	// Tạo key Redis dùng cho session hoặc user
 	redisKey := services.GetCacheKey(client.UserID, sessionId)
@@ -117,7 +116,6 @@ func handleUserMessage(client *Client, message []byte, c *gin.Context, sessionId
 func GetChatHistory(c *gin.Context) {
 	userIdstr := c.Param("id")
 	userID, _ := strconv.Atoi(userIdstr)
-	log.Println("Parsed userID:", userID)
 	// Lấy query `page` và `limit`
 	pageStr := c.DefaultQuery("page", "1")
 	limitStr := c.DefaultQuery("limit", "20")

@@ -29,10 +29,12 @@ type GPTHotelSearchParams struct {
 	Province string   `json:"province,omitempty"`
 	District string   `json:"district,omitempty"`
 	MaxPrice *int     `json:"maxPrice,omitempty"`
+	MinPrice *int     `json:"minPrice,omitempty"`
 	Benefits []string `json:"benefits,omitempty"`
 	Name     string   `json:"name,omitempty"`
 	NumTolet *int     `json:"numTolet,omitempty"`
 	NumBed   *int     `json:"numBed,omitempty"`
+	People   *int     `json:"people,omitempty`
 	FromDate string   `json:"fromDate,omitempty"`
 	ToDate   string   `json:"toDate,omitempty"`
 	Status   *int     `json:"status,omitempty"`
@@ -78,11 +80,13 @@ Bạn là trợ lý ảo chuyên tư vấn hệ thống đặt phòng khách s�
   "type": int,               // 0: hotel, 1: homestay, 2: villa
   "province": "string",
   "district": "string",
-  "maxPrice": int,
+  "maxPrice": int, //giá tối đa (nếu người dùng yêu cầu "dưới", "không quá", "tối đa",...).
+  "minPrice": int, //giá tối thiểu (nếu người dùng yêu cầu "trên", "từ", "ít nhất",...).
   "benefits": ["string"],
-  "name": "string",
+  "name": "string", //tên khách sạn (nếu người dùng đề cập).
   "numTolet": int,
   "numBed": int,
+  "people": int, số người
   "nums": int, // số sao đánh giá
   "fromDate": "yyyy-MM-dd",
   "toDate": "yyyy-MM-dd",
@@ -157,8 +161,10 @@ Ghi chú:
 			District: gptData.District,
 			Name:     gptData.Name,
 			PriceMax: gptData.MaxPrice,
+			PriceMin: gptData.MinPrice,
 			NumTolet: gptData.NumTolet,
 			NumBed:   gptData.NumBed,
+			People:   gptData.People,
 			FromDate: fromDate,
 			ToDate:   toDate,
 			Status:   gptData.Status,
