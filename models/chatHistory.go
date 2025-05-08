@@ -10,3 +10,4 @@ type ChatHistory struct {
 	Content     string    `json:"content"`
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 }
+																																																																																																																																																																																							

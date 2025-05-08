@@ -52,10 +52,6 @@ func HandleUserMessageWS(
 		return responses
 	}
 
-	if gptResponse != "" {
-		responses = append(responses, []byte(gptResponse))
-	}
-
 	if filters == nil {
 		return responses
 	}
@@ -92,7 +88,10 @@ func HandleUserMessageWS(
 		responses = append(responses, []byte("Không tìm thấy khách sạn phù hợp với yêu cầu hiện tại. Bạn vui lòng thử tìm lại với từ khóa khác hoặc nới lỏng tiêu chí lọc nhé."))
 		return responses
 	}
-	
+
+	if gptResponse != "" {
+		responses = append(responses, []byte(gptResponse))
+	}
 	var summaries []dto.HotelSummary
 	for _, r := range results {
 		summary := dto.HotelSummary{
