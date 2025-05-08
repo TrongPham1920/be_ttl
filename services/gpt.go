@@ -176,7 +176,7 @@ Ghi chú:
 			filters.BenefitIDs = mapBenefitNamesToIDs(gptData.Benefits)
 		}
 
-		return filters, "Đây là danh sách các khách sạn phù hợp với yêu cầu của bạn:", nil
+		return filters, "", nil
 	}
 
 	// Nếu không phải JSON, coi như GPT đang tư vấn tự nhiên

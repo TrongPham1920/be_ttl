@@ -55,7 +55,7 @@ func HandleUserMessageWS(
 	if gptResponse != "" {
 		responses = append(responses, []byte(gptResponse))
 	}
-	
+
 	if filters == nil {
 		return responses
 	}
@@ -93,6 +93,7 @@ func HandleUserMessageWS(
 		return responses
 	}
 
+	responses = append(responses, []byte("Đây là danh sách cơ sở phù hợp với yêu cầu của bạn:"))
 	var summaries []dto.HotelSummary
 	for _, r := range results {
 		summary := dto.HotelSummary{
