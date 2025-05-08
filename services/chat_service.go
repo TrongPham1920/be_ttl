@@ -52,13 +52,14 @@ func HandleUserMessageWS(
 		return responses
 	}
 
+	if gptResponse != "" {
+		responses = append(responses, []byte(gptResponse))
+	}
+	
 	if filters == nil {
 		return responses
 	}
 
-	if gptResponse != "" {
-		responses = append(responses, []byte(gptResponse))
-	}
 	// Gộp bộ lọc cũ
 	prevFilters, _ := GetLastFilters(ctx, rdb, redisKey)
 	if prevFilters != nil {
