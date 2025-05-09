@@ -89,6 +89,7 @@ func HandleUserMessageWS(
 	}
 
 	if len(results) == 0 {
+		_ = ClearLastFilters(ctx, rdb, redisKey)
 		responses = append(responses, []byte("Không tìm thấy khách sạn phù hợp với yêu cầu hiện tại. Bạn vui lòng thử tìm lại với từ khóa khác hoặc nới lỏng tiêu chí lọc nhé."))
 		return responses
 	}
