@@ -15,11 +15,11 @@ var MelodyInstance *melody.Melody
 
 func InitApp() (*gin.Engine, *melody.Melody, error) {
 	router := gin.Default()
-	
-																																																									configCors := cors.DefaultConfig()
+
+	configCors := cors.DefaultConfig()
 	configCors.AddAllowHeaders("Authorization")
 	configCors.AllowCredentials = true
-	configCors.AllowAllOrigins = false
+	configCors.AllowAllOrigins = true
 	configCors.AllowOriginFunc = func(origin string) bool {
 		return true
 	}
