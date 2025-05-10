@@ -20,9 +20,9 @@ func InitApp() (*gin.Engine, *melody.Melody, error) {
 	configCors.AddAllowHeaders("Authorization")
 	configCors.AllowCredentials = true
 	configCors.AllowAllOrigins = true
-	configCors.AllowOriginFunc = func(origin string) bool {
-		return true
-	}
+	// configCors.AllowOriginFunc = func(origin string) bool {
+	// 	return true
+	// }
 	router.Use(cors.New(configCors))
 
 	router.SetTrustedProxies(nil)
