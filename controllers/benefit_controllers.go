@@ -64,7 +64,6 @@ func GetAllBenefit(c *gin.Context) {
 	rdb, err := config.ConnectRedis()
 	if err != nil {
 		response.ServerError(c)
-		return
 	}
 
 	var allBenefits []models.Benefit
